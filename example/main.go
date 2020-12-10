@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/hajimehoshi/ebiten"
-	"github.com/hajimehoshi/ebiten/inpututil"
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/solarlune/ldtkgo"
 	"github.com/solarlune/ldtkgo/renderer"
 )
@@ -47,7 +47,7 @@ func NewGame() *Game {
 
 }
 
-func (g *Game) Update(screen *ebiten.Image) error {
+func (g *Game) Update() error {
 
 	levelChanged := false
 

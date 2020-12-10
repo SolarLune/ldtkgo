@@ -5,9 +5,11 @@ import (
 	"image"
 	"sort"
 
-	"github.com/hajimehoshi/ebiten"
-	"github.com/hajimehoshi/ebiten/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/solarlune/ldtkgo"
+
+	_ "image/png" // Importing for loading PNGs
 )
 
 // TilesetLoader represents an interface that can be implemented to load a tileset from string, returning an *ebiten.Image.
@@ -27,7 +29,7 @@ func NewDiskLoader() *DiskLoader {
 
 // LoadTileset simply loads a Tileset image from disk using ebitenutil's NewImageFromFile() function.
 func (d *DiskLoader) LoadTileset(tilesetPath string) *ebiten.Image {
-	if img, _, err := ebitenutil.NewImageFromFile(tilesetPath, d.Filter); err == nil {
+	if img, _, err := ebitenutil.NewImageFromFile(tilesetPath); err == nil {
 		return img
 	}
 	return nil
@@ -71,7 +73,7 @@ func (er *EbitenRenderer) setTileset(tilesetPath string, w, h int) {
 
 	er.CurrentTileset = tilesetPath
 
-	newLayer, _ := ebiten.NewImage(w, h, ebiten.FilterNearest)
+	newLayer := ebiten.NewImage(w, h)
 	er.RenderedLayers = append(er.RenderedLayers, newLayer)
 
 }

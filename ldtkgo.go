@@ -30,11 +30,11 @@ const (
 	WorldLayoutGridVania  = "GridVania"
 )
 
-// Property handles custom Properties created and customized on Entities.
+// Property represents custom Properties created and customized on Entities.
 type Property struct {
 	Identifier string      `json:"__identifier"`
-	Type       string      `json:"__type"`
-	Value      interface{} `json:"__value"`
+	Type       string      `json:"__type"`  // The Type of the Property.
+	Value      interface{} `json:"__value"` // The value contained within the property.
 }
 
 // AsInt returns a property's value as an int. Note that this function doesn't check to ensure the value is the specified type before returning it.
@@ -70,10 +70,10 @@ func (p *Property) AsColor() color.Color {
 
 // An Entity represents an Entity as placed in the LDtk level.
 type Entity struct {
-	Identifier    string      `json:"__identifier"`
-	Position      []int       `json:"px"`
-	Width, Height int         // This isn't a part of the LDtk export directly, but can still be found in the project and can be necessary, so we'll add it in for the heck of it
-	Properties    []*Property `json:"fieldInstances"`
+	Identifier    string      `json:"__identifier"` // Name of the Entity
+	Position      []int       `json:"px"`           // Position of the Entity (x, y)
+	Width, Height int         // Width and height of the Entity definition
+	Properties    []*Property `json:"fieldInstances"` // The Properties defined on the Entity
 }
 
 // Integer indicates the value for an individual "Integer Object" on the IntGrid layer.
@@ -85,7 +85,7 @@ type Integer struct {
 
 // Tile represents a graphical tile (whether automatic or manually placed).
 type Tile struct {
-	Position []int `json:"px"` // Position of the Tile in pixels
+	Position []int `json:"px"` // Position of the Tile in pixels (x, y)
 	Src      []int // The source position on the texture to draw this texture
 	Flip     byte  `json:"f"` // Flip bits - first bit is for X-flip, second is for Y. 0 = no flip, 1 = horizontal flip, 2 = vertical flip, 3 = both flipped
 	ID       int   `json:"t"` // The ID of the Tile.
@@ -94,14 +94,14 @@ type Tile struct {
 // Layer represents a Layer, of type either
 type Layer struct {
 	// The width and height of the layer
-	Identifier  string `json:"__identifier"`
+	Identifier  string `json:"__identifier"` // Identifier (name) of the Layer
 	ID          int
-	GridSize    int    `json:"__gridsize"`
-	OffsetX     int    `json:"__pxTotalOffsetX"` // The offset of the layer; this can be adjusted
+	GridSize    int    `json:"__gridsize"`       // Grid size of the Layer
+	OffsetX     int    `json:"__pxTotalOffsetX"` // The offset of the layer
 	OffsetY     int    `json:"__pxTotalOffsetY"`
-	CellWidth   int    `json:"__cWid"` // Overall width of the layer in cells (i.e. a 160x80 level with 16x16 tiles would have a CellWidth and CellHeight of 10x5)
-	CellHeight  int    `json:"__cHei"` // overall height of the layer in cells
-	Type        string `json:"__type"`
+	CellWidth   int    `json:"__cWid"`           // Overall width of the layer in cell count (i.e. a 160x80 level with 16x16 tiles would have a CellWidth and CellHeight of 10x5)
+	CellHeight  int    `json:"__cHei"`           // Overall height of the layer in cell count
+	Type        string `json:"__type"`           // Type of Layer. Can be compared using LayerType constants
 	TilesetPath string `json:"__tilesetRelPath"` // Relative path to the tileset image
 	IntGrid     []*Integer
 	AutoTiles   []*Tile   `json:"autoLayerTiles"` // Automatically set if IntGrid has values
@@ -168,17 +168,19 @@ func (layer *Layer) IntegerAt(x, y int) *Integer {
 
 }
 
+// Level represents a Level in an LDtk Project.
 type Level struct {
-	WorldX        int
+	WorldX        int // Position of the Level in the LDtk Project / world
 	WorldY        int
-	Width         int    `json:"pxWid"`
-	Height        int    `json:"pxHei"`
-	Identifier    string // Name of the Level (i.e. "Level0")
-	BGColorString string `json:"__bgColor"`
-	BGColor       color.Color
-	Layers        []*Layer `json:"layerInstances"` // The layers in the level in the project. Note that layers here (first is "furthest" / at the bottom, last is on top) is reversed compared to LDtk (first is at the top, bottom is on the bottom).
+	Width         int         `json:"pxWid"` // Width and height of the level in pixels.
+	Height        int         `json:"pxHei"`
+	Identifier    string      // Name of the Level (i.e. "Level0")
+	BGColorString string      `json:"__bgColor"`
+	BGColor       color.Color // Background Color for the Level; will automatically default to the Project's if it is left at default in the LDtk project.
+	Layers        []*Layer    `json:"layerInstances"` // The layers in the level in the project. Note that layers here (first is "furthest" / at the bottom, last is on top) is reversed compared to LDtk (first is at the top, bottom is on the bottom).
 }
 
+// LayerByIdentifier returns a Layer by its identifier (name). Returns nil if the specified Layer isn't found.
 func (level *Level) LayerByIdentifier(identifier string) *Layer {
 	for _, layer := range level.Layers {
 		if layer.Identifier == identifier {
@@ -188,6 +190,7 @@ func (level *Level) LayerByIdentifier(identifier string) *Layer {
 	return nil
 }
 
+// Project represents a full LDtk Project, allowing you access to the Levels within as well as some project-level properties.
 type Project struct {
 	WorldLayout     string
 	WorldGridWidth  int
@@ -199,7 +202,7 @@ type Project struct {
 	// JSONData    string
 }
 
-// LevelAt returns the level that "contains" the point indicated by the X and Y values given (or nil, if there isn't one).
+// LevelAt returns the level that "contains" the point indicated by the X and Y values given, or nil if one isn't found.
 func (project *Project) LevelAt(x, y int) *Level {
 
 	for _, level := range project.Levels {
@@ -216,7 +219,7 @@ func (project *Project) LevelAt(x, y int) *Level {
 
 }
 
-// LevelByIdentifier returns the level that has the identifier specified (or nil, if it isn't found).
+// LevelByIdentifier returns the level that has the identifier specified, or nil if one isn't found.
 func (project *Project) LevelByIdentifier(identifier string) *Level {
 	for _, level := range project.Levels {
 		if level.Identifier == identifier {
@@ -226,7 +229,7 @@ func (project *Project) LevelByIdentifier(identifier string) *Level {
 	return nil
 }
 
-// LoadFile loads the LDtk project from the filepath specified.
+// LoadFile loads the LDtk project from the filepath specified. Returns the Project and an error should the loading process fail.
 func LoadFile(filepath string) (*Project, error) {
 
 	var project *Project
@@ -244,7 +247,7 @@ func LoadFile(filepath string) (*Project, error) {
 
 }
 
-// LoadBytes loads the LDtk project using the specified slice of bytes.
+// LoadBytes loads the LDtk project using the specified slice of bytes. Returns the Project and an error should the loading process fail.
 func LoadBytes(data []byte) (*Project, error) {
 
 	project := &Project{}
