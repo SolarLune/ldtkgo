@@ -10,6 +10,7 @@ import (
 	"image/color"
 	"io/ioutil"
 	"math"
+	"path/filepath"
 
 	"github.com/tidwall/gjson"
 )
@@ -78,8 +79,8 @@ type Entity struct {
 
 // Integer indicates the value for an individual "Integer Object" on the IntGrid layer.
 type Integer struct {
-	Value    int   // The value of the Integer.
-	ID       int   // The ID of the Integer on the IntGrid.
+	Value    int   `json:"v"`       // The value of the Integer.
+	ID       int   `json:"coordID"` // The ID of the Integer on the IntGrid.
 	Position []int // Not actually available from the LDtk file, but added in afterwards as a convenience
 }
 
@@ -200,6 +201,7 @@ type Project struct {
 	JSONVersion     string
 	Levels          []*Level
 	// JSONData    string
+	IntGridNames []string
 }
 
 // LevelAt returns the level that "contains" the point indicated by the X and Y values given, or nil if one isn't found.
@@ -250,7 +252,7 @@ func LoadFile(filepath string) (*Project, error) {
 // LoadBytes loads the LDtk project using the specified slice of bytes. Returns the Project and an error should the loading process fail.
 func LoadBytes(data []byte) (*Project, error) {
 
-	project := &Project{}
+	project := &Project{IntGridNames: []string{}}
 
 	err := json.Unmarshal(data, project)
 
@@ -274,11 +276,13 @@ func LoadBytes(data []byte) (*Project, error) {
 
 		for _, layer := range level.Layers {
 
+			layer.TilesetPath = filepath.FromSlash(layer.TilesetPath)
+
 			for _, integer := range layer.IntGrid {
 
 				y := int(math.Floor(float64(integer.ID / layer.GridSize)))
 				x := integer.ID - y*layer.GridSize
-				integer.Position = []int{x, y}
+				integer.Position = []int{x * layer.GridSize, y * layer.GridSize}
 
 			}
 
@@ -295,8 +299,27 @@ func LoadBytes(data []byte) (*Project, error) {
 
 	}
 
+	for _, layerDef := range gjson.Get(dataStr, `defs.layers`).Array() {
+		if layerDef.Get("type").String() == "IntGrid" {
+			for _, value := range layerDef.Get("intGridValues").Array() {
+				project.IntGridNames = append(project.IntGridNames, value.Get("identifier").String())
+			}
+		}
+	}
+
 	return project, err
 
+}
+
+// IntGridConstantByName returns the IntGrid constant index by a named string. If the string is not found,
+// -1 is returned.
+func (project *Project) IntGridConstantByName(constantName string) int {
+	for i, name := range project.IntGridNames {
+		if name == constantName {
+			return i
+		}
+	}
+	return -1
 }
 
 // Just straight up cribbing this Hex > Color Conversion Code from StackOverflow: https://stackoverflow.com/questions/54197913/parse-hex-string-to-image-color

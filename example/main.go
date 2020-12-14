@@ -36,7 +36,7 @@ func NewGame() *Game {
 	level := g.LDTKProject.Levels[0]
 
 	// Create a new renderer...
-	g.EbitenRenderer = renderer.NewEbitenRenderer()
+	g.EbitenRenderer = renderer.NewEbitenRenderer(renderer.NewDiskLoader("")) // DiskLoader loads from disk using ebitenutil.NewImageFromFile().
 
 	// ... And render the tiles out to *ebiten.Images. We'll draw them later in the Draw() loop.
 	g.EbitenRenderer.Render(level)
@@ -96,7 +96,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	for i, layer := range g.EbitenRenderer.RenderedLayers {
 		if g.ActiveLayers[i] {
-			screen.DrawImage(layer, &ebiten.DrawImageOptions{})
+			screen.DrawImage(layer.Image, &ebiten.DrawImageOptions{})
 		}
 	}
 

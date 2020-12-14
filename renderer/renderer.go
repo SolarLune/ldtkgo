@@ -3,6 +3,7 @@ package renderer
 
 import (
 	"image"
+	"path/filepath"
 	"sort"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -19,37 +20,46 @@ type TilesetLoader interface {
 
 // DiskLoader is an implementation of TilesetLoader that simply loads a Tileset image from disk using ebitenutil's NewImageFromFile() function.
 type DiskLoader struct {
-	Filter ebiten.Filter
+	BasePath string
+	Filter   ebiten.Filter
 }
 
 // NewDiskLoader creates a new DiskLoader struct.
-func NewDiskLoader() *DiskLoader {
-	return &DiskLoader{Filter: ebiten.FilterNearest}
+func NewDiskLoader(basePath string) *DiskLoader {
+	return &DiskLoader{
+		BasePath: basePath,
+		Filter:   ebiten.FilterNearest,
+	}
 }
 
 // LoadTileset simply loads a Tileset image from disk using ebitenutil's NewImageFromFile() function.
 func (d *DiskLoader) LoadTileset(tilesetPath string) *ebiten.Image {
-	if img, _, err := ebitenutil.NewImageFromFile(tilesetPath); err == nil {
+	if img, _, err := ebitenutil.NewImageFromFile(filepath.Join(d.BasePath, tilesetPath)); err == nil {
 		return img
 	}
 	return nil
+}
+
+type RenderedLayer struct {
+	Image *ebiten.Image // The image that was rendered out
+	Layer *ldtkgo.Layer // The layer used to render the image
 }
 
 // EbitenRenderer is a struct that renders LDtk levels to *ebiten.Images.
 type EbitenRenderer struct {
 	Tilesets       map[string]*ebiten.Image
 	CurrentTileset string
-	RenderedLayers []*ebiten.Image
+	RenderedLayers []*RenderedLayer
 	Loader         TilesetLoader // Loader for the renderer; defaults to a DiskLoader instance, though this can be switched out with something else as necessary.
 }
 
-// NewEbitenRenderer creates a new Renderer instance. Width and Height should be the width and height of the level in pixels.
-func NewEbitenRenderer() *EbitenRenderer {
+// NewEbitenRenderer creates a new Renderer instance. TilesetLoader should be an instance of a struct designed to return *ebiten.Images for each Tileset requested (by path relative to the LDtk project file).
+func NewEbitenRenderer(loader TilesetLoader) *EbitenRenderer {
 
 	return &EbitenRenderer{
 		Tilesets:       map[string]*ebiten.Image{},
-		RenderedLayers: []*ebiten.Image{},
-		Loader:         NewDiskLoader(),
+		RenderedLayers: []*RenderedLayer{},
+		Loader:         loader,
 	}
 
 }
@@ -57,13 +67,15 @@ func NewEbitenRenderer() *EbitenRenderer {
 // Clear clears the renderer's Result.
 func (er *EbitenRenderer) Clear() {
 	for _, layer := range er.RenderedLayers {
-		layer.Dispose()
+		layer.Image.Dispose()
 	}
-	er.RenderedLayers = []*ebiten.Image{}
+	er.RenderedLayers = []*RenderedLayer{}
 }
 
-// setTileset gets called when necessary between rendering indidvidual Layers of a Level.
-func (er *EbitenRenderer) setTileset(tilesetPath string, w, h int) {
+// beginLayer gets called when necessary between rendering indidvidual Layers of a Level.
+func (er *EbitenRenderer) beginLayer(layer *ldtkgo.Layer, w, h int) {
+
+	tilesetPath := layer.TilesetPath
 
 	_, exists := er.Tilesets[tilesetPath]
 
@@ -73,8 +85,9 @@ func (er *EbitenRenderer) setTileset(tilesetPath string, w, h int) {
 
 	er.CurrentTileset = tilesetPath
 
-	newLayer := ebiten.NewImage(w, h)
-	er.RenderedLayers = append(er.RenderedLayers, newLayer)
+	renderedImage := ebiten.NewImage(w, h)
+
+	er.RenderedLayers = append(er.RenderedLayers, &RenderedLayer{Image: renderedImage, Layer: layer})
 
 }
 
@@ -110,7 +123,7 @@ func (er *EbitenRenderer) renderTile(x, y, srcX, srcY, srcW, srcH int, flipBit b
 	opt.GeoM.Translate(float64(x), float64(y))
 
 	// Finally, draw the tile to the Result image.
-	er.RenderedLayers[len(er.RenderedLayers)-1].DrawImage(tile, opt)
+	er.RenderedLayers[len(er.RenderedLayers)-1].Image.DrawImage(tile, opt)
 
 }
 
@@ -127,7 +140,7 @@ func (er *EbitenRenderer) Render(level *ldtkgo.Level) {
 
 			if len(layer.Tiles) > 0 {
 
-				er.setTileset(layer.TilesetPath, level.Width, level.Height)
+				er.beginLayer(layer, level.Width, level.Height)
 
 				for _, tile := range layer.Tiles {
 					er.renderTile(tile.Position[0]+layer.OffsetX, tile.Position[1]+layer.OffsetY, tile.Src[0], tile.Src[1], layer.GridSize, layer.GridSize, tile.Flip)
@@ -141,7 +154,7 @@ func (er *EbitenRenderer) Render(level *ldtkgo.Level) {
 
 			if len(layer.AutoTiles) > 0 {
 
-				er.setTileset(layer.TilesetPath, level.Width, level.Height)
+				er.beginLayer(layer, level.Width, level.Height)
 
 				for _, tile := range layer.AutoTiles {
 					er.renderTile(tile.Position[0]+layer.OffsetX, tile.Position[1]+layer.OffsetY, tile.Src[0], tile.Src[1], layer.GridSize, layer.GridSize, tile.Flip)

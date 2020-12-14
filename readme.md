@@ -51,4 +51,4 @@ As shown above, rendering is done by creating a renderer and using it to render 
 
 ## Anything Else?
 
-The core LDtk loader requires the `encoding/json` and `image` packages, as well as [tidwall's gjson](https://github.com/tidwall/gjson) package. The ebiten renderer requires the ebiten package as well, of course.
+The core LDtk loader requires the `encoding/json` and `image` packages, as well as [tidwall's gjson](https://github.com/tidwall/gjson) package. The ebiten renderer requires ebiten package as well, of course.
