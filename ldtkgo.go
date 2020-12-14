@@ -110,6 +110,16 @@ type Layer struct {
 	Entities    []*Entity `json:"entityInstances"`
 }
 
+// EntityByIdentifier returns the Entity with the identifier (name) specified. If no Entity with the name is found, the function returns nil.
+func (layer *Layer) EntityByIdentifier(identifier string) *Entity {
+	for _, entity := range layer.Entities {
+		if entity.Identifier == identifier {
+			return entity
+		}
+	}
+	return nil
+}
+
 // ToGridPosition converts the specified position from a position in world space to a position on the Layer's grid. For example, if the layer were 128x128 and had 16x16 tiles, ToGridPosition(32, 16) would return (2, 1).
 func (layer *Layer) ToGridPosition(x, y int) (int, int) {
 	x /= layer.GridSize
@@ -280,8 +290,8 @@ func LoadBytes(data []byte) (*Project, error) {
 
 			for _, integer := range layer.IntGrid {
 
-				y := int(math.Floor(float64(integer.ID / layer.GridSize)))
-				x := integer.ID - y*layer.GridSize
+				y := int(math.Floor(float64(integer.ID / layer.CellWidth)))
+				x := integer.ID - y*layer.CellWidth
 				integer.Position = []int{x * layer.GridSize, y * layer.GridSize}
 
 			}
