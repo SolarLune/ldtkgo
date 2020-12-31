@@ -7,7 +7,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/solarlune/ldtkgo"
-	"github.com/solarlune/ldtkgo/renderer"
+	renderer "github.com/solarlune/ldtkgo/ebitenrenderer"
 )
 
 type Game struct {

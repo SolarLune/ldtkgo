@@ -1,5 +1,4 @@
-//Package renderer holds an ebiten Renderer for LDtk Projects.
-package renderer
+package ebitenrenderer
 
 import (
 	"image"
@@ -40,6 +39,7 @@ func (d *DiskLoader) LoadTileset(tilesetPath string) *ebiten.Image {
 	return nil
 }
 
+// RenderedLayer represents an LDtk.Layer that was rendered out to an *ebiten.Image.
 type RenderedLayer struct {
 	Image *ebiten.Image // The image that was rendered out
 	Layer *ldtkgo.Layer // The layer used to render the image
@@ -95,7 +95,7 @@ func (er *EbitenRenderer) beginLayer(layer *ldtkgo.Layer, w, h int) {
 // x, y = position of the drawn tile
 // srcX, srcY = position on the source tilesheet of the specified tile
 // srcW, srcH = width and height of the tile
-// flipX, flipY = If the tile should be flipped horizontally or vertically
+// flipBit = the flip bit of the tile; if the first bit is set, it should flip horizontally. If the second is set, it should flip vertically.
 func (er *EbitenRenderer) renderTile(x, y, srcX, srcY, srcW, srcH int, flipBit byte) {
 
 	// Subimage the Tile from the Tileset
