@@ -187,7 +187,7 @@ type Level struct {
 	Height        int         `json:"pxHei"`
 	Identifier    string      // Name of the Level (i.e. "Level0")
 	BGColorString string      `json:"__bgColor"`
-	BGColor       color.Color // Background Color for the Level; will automatically default to the Project's if it is left at default in the LDtk project.
+	BGColor       color.Color `json:"-"`              // Background Color for the Level; will automatically default to the Project's if it is left at default in the LDtk project.
 	Layers        []*Layer    `json:"layerInstances"` // The layers in the level in the project. Note that layers here (first is "furthest" / at the bottom, last is on top) is reversed compared to LDtk (first is at the top, bottom is on the bottom).
 }
 
