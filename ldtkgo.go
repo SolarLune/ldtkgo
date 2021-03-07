@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"math"
 	"path/filepath"
+	"strconv"
 
 	"github.com/tidwall/gjson"
 )
@@ -71,17 +72,18 @@ func (p *Property) AsColor() color.Color {
 
 // An Entity represents an Entity as placed in the LDtk level.
 type Entity struct {
-	Identifier    string      `json:"__identifier"` // Name of the Entity
-	Position      []int       `json:"px"`           // Position of the Entity (x, y)
-	Width, Height int         // Width and height of the Entity definition
-	Properties    []*Property `json:"fieldInstances"` // The Properties defined on the Entity
+	Identifier string      `json:"__identifier"`   // Name of the Entity
+	Position   []int       `json:"px"`             // Position of the Entity (x, y)
+	Width      int         `json:"width"`          // Width  of the Entity in pixels
+	Height     int         `json:"height"`         // Height of the Entity in pixels
+	Properties []*Property `json:"fieldInstances"` // The Properties defined on the Entity
 }
 
 // Integer indicates the value for an individual "Integer Object" on the IntGrid layer.
 type Integer struct {
 	Value    int   `json:"v"`       // The value of the Integer.
 	ID       int   `json:"coordID"` // The ID of the Integer on the IntGrid.
-	Position []int // Not actually available from the LDtk file, but added in afterwards as a convenience
+	Position []int `json:"-"`       // Not actually available from the LDtk file, but added in afterwards as a convenience
 }
 
 // Tile represents a graphical tile (whether automatic or manually placed).
@@ -95,8 +97,7 @@ type Tile struct {
 // Layer represents a Layer, of type either
 type Layer struct {
 	// The width and height of the layer
-	Identifier  string `json:"__identifier"` // Identifier (name) of the Layer
-	ID          int
+	Identifier  string `json:"__identifier"`     // Identifier (name) of the Layer
 	GridSize    int    `json:"__gridsize"`       // Grid size of the Layer
 	OffsetX     int    `json:"__pxTotalOffsetX"` // The offset of the layer
 	OffsetY     int    `json:"__pxTotalOffsetY"`
@@ -108,6 +109,7 @@ type Layer struct {
 	AutoTiles   []*Tile   `json:"autoLayerTiles"` // Automatically set if IntGrid has values
 	Tiles       []*Tile   `json:"gridTiles"`
 	Entities    []*Entity `json:"entityInstances"`
+	Visible     bool      `json:"visible"` // Whether the layer is visible in LDtk
 }
 
 // EntityByIdentifier returns the Entity with the identifier (name) specified. If no Entity with the name is found, the function returns nil.
@@ -179,9 +181,17 @@ func (layer *Layer) IntegerAt(x, y int) *Integer {
 
 }
 
+type BGImage struct {
+	Path     string
+	ScaleX   float64
+	ScaleY   float64
+	CropRect []float64
+}
+
 // Level represents a Level in an LDtk Project.
 type Level struct {
-	WorldX        int // Position of the Level in the LDtk Project / world
+	BGImage       BGImage `json:"-"`
+	WorldX        int     // Position of the Level in the LDtk Project / world
 	WorldY        int
 	Width         int         `json:"pxWid"` // Width and height of the level in pixels.
 	Height        int         `json:"pxHei"`
@@ -189,6 +199,7 @@ type Level struct {
 	BGColorString string      `json:"__bgColor"`
 	BGColor       color.Color `json:"-"`              // Background Color for the Level; will automatically default to the Project's if it is left at default in the LDtk project.
 	Layers        []*Layer    `json:"layerInstances"` // The layers in the level in the project. Note that layers here (first is "furthest" / at the bottom, last is on top) is reversed compared to LDtk (first is at the top, bottom is on the bottom).
+	Properties    []*Property `json:"fieldInstances"` // The Properties defined on the Entity
 }
 
 // LayerByIdentifier returns a Layer by its identifier (name). Returns nil if the specified Layer isn't found.
@@ -276,12 +287,35 @@ func LoadBytes(data []byte) (*Project, error) {
 		project.BGColor = color.RGBA{}
 	}
 
-	for _, level := range project.Levels {
+	for index, level := range project.Levels {
 
 		if level.BGColorString != "" {
 			level.BGColor, _ = parseHexColorFast(level.BGColorString)
 		} else {
 			level.BGColor = color.RGBA{}
+		}
+
+		// Parse level JSON data for background info
+		levelData := gjson.Get(dataStr, "levels."+strconv.Itoa(index))
+
+		if levelData.Get("bgRelPath").Exists() && levelData.Get("bgRelPath").String() != "" {
+
+			bgPos := levelData.Get("__bgPos")
+			scale := bgPos.Get("scale").Array()
+			cropRect := bgPos.Get("cropRect").Array()
+
+			level.BGImage = BGImage{
+				Path:   levelData.Get("bgRelPath").String(),
+				ScaleX: scale[0].Float(),
+				ScaleY: scale[1].Float(),
+				CropRect: []float64{
+					cropRect[0].Float(),
+					cropRect[1].Float(),
+					cropRect[2].Float(),
+					cropRect[3].Float(),
+				},
+			}
+
 		}
 
 		for _, layer := range level.Layers {
@@ -294,15 +328,6 @@ func LoadBytes(data []byte) (*Project, error) {
 				x := integer.ID - y*layer.CellWidth
 				integer.Position = []int{x * layer.GridSize, y * layer.GridSize}
 
-			}
-
-			for _, entity := range layer.Entities {
-				for _, entityDef := range gjson.Get(dataStr, `defs.entities`).Array() {
-					if entity.Identifier == entityDef.Get("identifier").String() {
-						entity.Width = int(entityDef.Get("width").Int())
-						entity.Height = int(entityDef.Get("height").Int())
-					}
-				}
 			}
 
 		}

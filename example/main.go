@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/solarlune/ldtkgo"
 	renderer "github.com/solarlune/ldtkgo/ebitenrenderer"
@@ -13,6 +14,7 @@ import (
 type Game struct {
 	LDTKProject    *ldtkgo.Project
 	EbitenRenderer *renderer.EbitenRenderer
+	BGImage        *ebiten.Image
 	CurrentLevel   int
 	ActiveLayers   []bool
 }
@@ -25,21 +27,21 @@ func NewGame() *Game {
 
 	var err error
 
-	// Load LDtk Project
+	// First, we load the LDtk Project.
 	g.LDTKProject, err = ldtkgo.LoadFile("example.ldtk")
 
 	if err != nil {
 		panic(err)
 	}
 
-	// Choose a level...
-	level := g.LDTKProject.Levels[0]
+	// Seconds, we create a new Renderer.
 
-	// Create a new renderer...
-	g.EbitenRenderer = renderer.NewEbitenRenderer(renderer.NewDiskLoader("")) // DiskLoader loads from disk using ebitenutil.NewImageFromFile().
+	// ebitenrenderer.DiskLoader loads images from disk using ebitenutil.NewImageFromFile() and takes an argument of the base path to use when loading.
+	// We pass a blank string to NewDiskLoader() because for the example, the assets are in the same directory.
+	g.EbitenRenderer = renderer.NewEbitenRenderer(renderer.NewDiskLoader(""))
 
-	// ... And render the tiles out to *ebiten.Images. We'll draw them later in the Draw() loop.
-	g.EbitenRenderer.Render(level)
+	// Then, we render the tiles out to *ebiten.Images contained in the EbitenRenderer. We'll grab them to draw later in the Draw() loop.
+	g.RenderLevel()
 
 	fmt.Println("Press the 1 - 4 keys to toggle the tileset layers. Press the Left or Right arrow keys to switch Levels.")
 
@@ -47,18 +49,37 @@ func NewGame() *Game {
 
 }
 
-func (g *Game) Update() error {
+func (g *Game) RenderLevel() {
 
-	levelChanged := false
+	if g.CurrentLevel >= len(g.LDTKProject.Levels) {
+		g.CurrentLevel = 0
+	}
+
+	if g.CurrentLevel < 0 {
+		g.CurrentLevel = len(g.LDTKProject.Levels) - 1
+	}
+
+	level := g.LDTKProject.Levels[g.CurrentLevel]
+
+	if level.BGImage.Path != "" {
+		g.BGImage, _, _ = ebitenutil.NewImageFromFile(level.BGImage.Path)
+	} else {
+		g.BGImage = nil
+	}
+
+	g.EbitenRenderer.Render(level)
+}
+
+func (g *Game) Update() error {
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyRight) {
 		g.CurrentLevel++
-		levelChanged = true
+		g.RenderLevel()
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyLeft) {
 		g.CurrentLevel--
-		levelChanged = true
+		g.RenderLevel()
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.Key1) {
@@ -74,25 +95,21 @@ func (g *Game) Update() error {
 		g.ActiveLayers[3] = !g.ActiveLayers[3]
 	}
 
-	if g.CurrentLevel >= len(g.LDTKProject.Levels) {
-		g.CurrentLevel = 0
-	}
-
-	if g.CurrentLevel < 0 {
-		g.CurrentLevel = len(g.LDTKProject.Levels) - 1
-	}
-
-	if levelChanged {
-		g.EbitenRenderer.Render(g.LDTKProject.Levels[g.CurrentLevel])
-	}
-
 	return nil
 
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
 
-	screen.Fill(g.LDTKProject.Levels[0].BGColor) // We want to use the BG Color when possible
+	screen.Fill(g.LDTKProject.Levels[g.CurrentLevel].BGColor) // We want to use the BG Color when possible
+
+	if g.BGImage != nil {
+		opt := &ebiten.DrawImageOptions{}
+		bgImage := g.LDTKProject.Levels[g.CurrentLevel].BGImage
+		opt.GeoM.Translate(-bgImage.CropRect[0], -bgImage.CropRect[1])
+		opt.GeoM.Scale(bgImage.ScaleX, bgImage.ScaleY)
+		screen.DrawImage(g.BGImage, opt)
+	}
 
 	for i, layer := range g.EbitenRenderer.RenderedLayers {
 		if g.ActiveLayers[i] {

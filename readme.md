@@ -1,6 +1,6 @@
 # LDtk-Go
 
-LDtk-Go is a loader for [LDtk](https://ldtk.io/) projects written in pure Go.
+LDtk-Go is a loader for [LDtk v0.8.1](https://ldtk.io/) projects written in pure Go.
 
 ![Screenshot](https://i.imgur.com/fFDmCCw.png)
 
@@ -36,14 +36,14 @@ func main() {
 	// Create a new renderer...
 	ebitenRenderer = renderer.NewEbitenRenderer()
 
-	// ... And render the tiles for the level out to *ebiten.Images. We'll retrieve them to draw later in a Draw() loop.
+	// ... And render the tiles for the level out to layers, which will be *ebiten.Images. We'll retrieve them to draw in a Draw() loop later.
 	ebitenRenderer.Render(level)
 
 }
 
 ```
 
-As shown above, rendering is done by creating a renderer and using it to render with your framework of choice. One is already provided for the ebiten framework, which can be used as a general guide for creating other renderers.
+As shown above, rendering is done by creating a renderer and using it to render with your framework of choice. An example is already provided for the ebiten and raylib frameworks, which can be used as a general guide for creating other renderers.
 
 ## Running the Example
 
