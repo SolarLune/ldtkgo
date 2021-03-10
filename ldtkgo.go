@@ -94,6 +94,16 @@ type Tile struct {
 	ID       int   `json:"t"` // The ID of the Tile.
 }
 
+// FlipX returns if the Tile is flipped horizontally.
+func (t *Tile) FlipX() bool {
+	return t.Flip&1 > 0
+}
+
+// FlipY returns if the Tile is flipped vertically.
+func (t *Tile) FlipY() bool {
+	return t.Flip&2 > 0
+}
+
 // Layer represents a Layer, of type either
 type Layer struct {
 	// The width and height of the layer
@@ -110,6 +120,12 @@ type Layer struct {
 	Tiles       []*Tile   `json:"gridTiles"`
 	Entities    []*Entity `json:"entityInstances"`
 	Visible     bool      `json:"visible"` // Whether the layer is visible in LDtk
+}
+
+// AllTiles simply returns all of the tiles in the layer, regardless of whether they're AutoTiles or manually placed Tiles. This is a convenience function to keep you from rendering
+// AutoTiles and Tiles in two different loops.
+func (layer *Layer) AllTiles() []*Tile {
+	return append(append([]*Tile{}, layer.Tiles...), layer.AutoTiles...)
 }
 
 // EntityByIdentifier returns the Entity with the identifier (name) specified. If no Entity with the name is found, the function returns nil.

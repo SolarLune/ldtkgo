@@ -136,28 +136,46 @@ func (er *EbitenRenderer) Render(level *ldtkgo.Level) {
 
 		switch layer.Type {
 
-		case ldtkgo.LayerTypeTile:
-
-			if len(layer.Tiles) > 0 {
-
-				er.beginLayer(layer, level.Width, level.Height)
-
-				for _, tile := range layer.Tiles {
-					er.renderTile(tile.Position[0]+layer.OffsetX, tile.Position[1]+layer.OffsetY, tile.Src[0], tile.Src[1], layer.GridSize, layer.GridSize, tile.Flip)
-				}
-
-			}
-
 		case ldtkgo.LayerTypeIntGrid: // IntGrids get autotiles automatically
 			fallthrough
 		case ldtkgo.LayerTypeAutoTile:
+			fallthrough
+		case ldtkgo.LayerTypeTile:
 
-			if len(layer.AutoTiles) > 0 {
+			if tiles := layer.AllTiles(); len(tiles) > 0 {
 
 				er.beginLayer(layer, level.Width, level.Height)
 
-				for _, tile := range layer.AutoTiles {
-					er.renderTile(tile.Position[0]+layer.OffsetX, tile.Position[1]+layer.OffsetY, tile.Src[0], tile.Src[1], layer.GridSize, layer.GridSize, tile.Flip)
+				for _, tileData := range tiles {
+					// er.renderTile(tile.Position[0]+layer.OffsetX, tile.Position[1]+layer.OffsetY, tile.Src[0], tile.Src[1], layer.GridSize, layer.GridSize, tile.Flip)
+
+					// Subimage the Tile from the Tileset
+					tile := er.Tilesets[er.CurrentTileset].SubImage(image.Rect(tileData.Src[0], tileData.Src[1], tileData.Src[0]+layer.GridSize, tileData.Src[1]+layer.GridSize)).(*ebiten.Image)
+
+					opt := &ebiten.DrawImageOptions{}
+
+					// We have to offset the tile to be centered before flipping
+					opt.GeoM.Translate(float64(-layer.GridSize/2), float64(-layer.GridSize/2))
+
+					// Handle flipping; first bit in byte is horizontal flipping, second is vertical flipping.
+
+					if tileData.FlipX() {
+						opt.GeoM.Scale(-1, 1)
+					}
+					if tileData.FlipY() {
+						opt.GeoM.Scale(1, -1)
+					}
+
+					// Undo offsetting
+					opt.GeoM.Translate(float64(layer.GridSize/2), float64(layer.GridSize/2))
+
+					// Move tile to final position; note that slightly unlike LDtk, layer offsets in LDtk-Go are added directly into the final tiles' X and Y positions. This means that with this renderer,
+					// if a layer's offset pushes tiles outside of the layer's render Result image, they will be cut off. On LDtk, the tiles are still rendered, of course.
+					opt.GeoM.Translate(float64(tileData.Position[0]+layer.OffsetX), float64(tileData.Position[1]+layer.OffsetY))
+
+					// Finally, draw the tile to the Result image.
+					er.RenderedLayers[len(er.RenderedLayers)-1].Image.DrawImage(tile, opt)
+
 				}
 
 			}
