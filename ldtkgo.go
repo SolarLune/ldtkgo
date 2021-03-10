@@ -79,6 +79,18 @@ type Entity struct {
 	Properties []*Property `json:"fieldInstances"` // The Properties defined on the Entity
 }
 
+// PropertyByIdentifier returns a Property by its Identifier string (name).
+func (entity *Entity) PropertyByIdentifier(id string) *Property {
+
+	for _, p := range entity.Properties {
+		if p.Identifier == id {
+			return p
+		}
+	}
+	return nil
+
+}
+
 // Integer indicates the value for an individual "Integer Object" on the IntGrid layer.
 type Integer struct {
 	Value    int   `json:"v"`       // The value of the Integer.
@@ -104,7 +116,7 @@ func (t *Tile) FlipY() bool {
 	return t.Flip&2 > 0
 }
 
-// Layer represents a Layer, of type either
+// Layer represents a Layer, which can be of multiple types (Entity, AutoTile, Tile, or IntGrid).
 type Layer struct {
 	// The width and height of the layer
 	Identifier  string `json:"__identifier"`     // Identifier (name) of the Layer
@@ -197,6 +209,7 @@ func (layer *Layer) IntegerAt(x, y int) *Integer {
 
 }
 
+// BGImage represents a Level's background image as definied withing LDtk (the filepath, the scale, etc).
 type BGImage struct {
 	Path     string
 	ScaleX   float64
@@ -206,8 +219,8 @@ type BGImage struct {
 
 // Level represents a Level in an LDtk Project.
 type Level struct {
-	BGImage       BGImage `json:"-"`
-	WorldX        int     // Position of the Level in the LDtk Project / world
+	BGImage       *BGImage `json:"-"` // Any background image that might be applied to this Level.
+	WorldX        int      // Position of the Level in the LDtk Project / world
 	WorldY        int
 	Width         int         `json:"pxWid"` // Width and height of the level in pixels.
 	Height        int         `json:"pxHei"`
@@ -226,6 +239,18 @@ func (level *Level) LayerByIdentifier(identifier string) *Layer {
 		}
 	}
 	return nil
+}
+
+// PropertyByIdentifier returns a Property by its Identifier string (name).
+func (level *Level) PropertyByIdentifier(id string) *Property {
+
+	for _, p := range level.Properties {
+		if p.Identifier == id {
+			return p
+		}
+	}
+	return nil
+
 }
 
 // Project represents a full LDtk Project, allowing you access to the Levels within as well as some project-level properties.
@@ -268,7 +293,7 @@ func (project *Project) LevelByIdentifier(identifier string) *Level {
 	return nil
 }
 
-// LoadFile loads the LDtk project from the filepath specified. Returns the Project and an error should the loading process fail.
+// LoadFile loads the LDtk project from the filepath specified. Returns the Project and an error should the loading process fail (unable to find the file, unable to deserialize the JSON).
 func LoadFile(filepath string) (*Project, error) {
 
 	var project *Project
@@ -286,7 +311,8 @@ func LoadFile(filepath string) (*Project, error) {
 
 }
 
-// LoadBytes loads the LDtk project using the specified slice of bytes. Returns the Project and an error should the loading process fail.
+// LoadBytes loads the LDtk project using the specified slice of bytes. Returns the Project and an error should there be an error in the loading process (unable to properly deserialize the JSON). In this case,
+// the function still returns the Project, as properly loaded as possible.
 func LoadBytes(data []byte) (*Project, error) {
 
 	project := &Project{IntGridNames: []string{}}
@@ -320,7 +346,7 @@ func LoadBytes(data []byte) (*Project, error) {
 			scale := bgPos.Get("scale").Array()
 			cropRect := bgPos.Get("cropRect").Array()
 
-			level.BGImage = BGImage{
+			level.BGImage = &BGImage{
 				Path:   levelData.Get("bgRelPath").String(),
 				ScaleX: scale[0].Float(),
 				ScaleY: scale[1].Float(),

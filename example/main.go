@@ -27,7 +27,7 @@ func NewGame() *Game {
 
 	var err error
 
-	// First, we load the LDtk Project.
+	// First, we load the LDtk Project. An error would indicate that ldtk-go was unable to find the project file or deserialize the JSON.
 	g.LDTKProject, err = ldtkgo.LoadFile("example.ldtk")
 
 	if err != nil {

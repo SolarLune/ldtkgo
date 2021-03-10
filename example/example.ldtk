@@ -591,7 +591,16 @@
 			"bgPivotY": 0,
 			"__bgPos": { "topLeftPx": [0,0], "scale": [1,1], "cropRect": [0,0,320,240] },
 			"externalRelPath": null,
-			"fieldInstances": [{ "__identifier": "TriggerSomething", "__value": false, "__type": "Bool", "defUid": 38, "realEditorValues": [] }],
+			"fieldInstances": [{
+				"__identifier": "TriggerSomething",
+				"__value": true,
+				"__type": "Bool",
+				"defUid": 38,
+				"realEditorValues": [{
+					"id": "V_Bool",
+					"params": [ true ]
+				}]
+			}],
 			"layerInstances": [
 				{
 					"__identifier": "Entities",
