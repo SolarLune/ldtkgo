@@ -77,6 +77,7 @@ type Entity struct {
 	Width      int         `json:"width"`          // Width  of the Entity in pixels
 	Height     int         `json:"height"`         // Height of the Entity in pixels
 	Properties []*Property `json:"fieldInstances"` // The Properties defined on the Entity
+	Pivot      []float32   `json:"__pivot"`        // Pivot position of the Entity (a centered Pivot would be 0.5, 0.5)
 }
 
 // PropertyByIdentifier returns a Property by its Identifier string (name).
