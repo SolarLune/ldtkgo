@@ -64,6 +64,16 @@ func (p *Property) AsArray() []interface{} {
 	return p.Value.([]interface{})
 }
 
+// AsMap returns a property's value as a map of string to interface{} values. As an aside, the JSON deserialization process turns LDtk Points into Maps, where the key is "cx" or
+// "cy", and the value is the x and y position. Note that this function doesn't check to ensure the value is the specified type before returning it.
+func (p *Property) AsMap() map[string]interface{} {
+	return p.Value.(map[string]interface{})
+}
+
+func (p *Property) IsNull() bool {
+	return p.Value == nil
+}
+
 // AsColor returns a property's value as a color.Color struct. Note that this function doesn't check to ensure the value is the specified type before returning it.
 func (p *Property) AsColor() color.Color {
 	color, _ := parseHexColorFast(p.AsString())
@@ -294,8 +304,8 @@ func (project *Project) LevelByIdentifier(identifier string) *Level {
 	return nil
 }
 
-// LoadFile loads the LDtk project from the filepath specified. Returns the Project and an error should the loading process fail (unable to find the file, unable to deserialize the JSON).
-func LoadFile(filepath string) (*Project, error) {
+// Open loads the LDtk project from the filepath specified. Returns the Project and an error should the loading process fail (unable to find the file, unable to deserialize the JSON).
+func Open(filepath string) (*Project, error) {
 
 	var project *Project
 
@@ -305,20 +315,23 @@ func LoadFile(filepath string) (*Project, error) {
 	bytes, err = ioutil.ReadFile(filepath)
 
 	if err == nil {
-		project, err = LoadBytes(bytes)
+		project, err = Read(bytes)
 	}
 
 	return project, err
 
 }
 
-// LoadBytes loads the LDtk project using the specified slice of bytes. Returns the Project and an error should there be an error in the loading process (unable to properly deserialize the JSON). In this case,
-// the function still returns the Project, as properly loaded as possible.
-func LoadBytes(data []byte) (*Project, error) {
+// Read reads the LDtk project using the specified slice of bytes. Returns the Project and an error should there be an error in the loading process (unable to properly deserialize the JSON).
+func Read(data []byte) (*Project, error) {
 
 	project := &Project{IntGridNames: []string{}}
 
 	err := json.Unmarshal(data, project)
+
+	if err != nil {
+		return nil, err
+	}
 
 	dataStr := string(data)
 
