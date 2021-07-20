@@ -9,7 +9,6 @@ import (
 	"image"
 	"image/color"
 	"io/ioutil"
-	"math"
 	"path/filepath"
 	"strconv"
 
@@ -104,9 +103,21 @@ func (entity *Entity) PropertyByIdentifier(id string) *Property {
 
 // Integer indicates the value for an individual "Integer Object" on the IntGrid layer.
 type Integer struct {
+	Position []int `json:"-"`       // Not actually available from the LDtk file, but added in afterwards as a convenience
 	Value    int   `json:"v"`       // The value of the Integer.
 	ID       int   `json:"coordID"` // The ID of the Integer on the IntGrid.
-	Position []int `json:"-"`       // Not actually available from the LDtk file, but added in afterwards as a convenience
+}
+
+// EnumSet represents a set of Enums applied to tiles; this is just for convenience so you can see if a Tile contains an enum easily.
+type EnumSet []string
+
+func (e EnumSet) Contains(enum string) bool {
+	for _, v := range e {
+		if v == enum {
+			return true
+		}
+	}
+	return false
 }
 
 // Tile represents a graphical tile (whether automatic or manually placed).
@@ -114,7 +125,7 @@ type Tile struct {
 	Position []int `json:"px"` // Position of the Tile in pixels (x, y)
 	Src      []int // The source position on the texture to draw this texture
 	Flip     byte  `json:"f"` // Flip bits - first bit is for X-flip, second is for Y. 0 = no flip, 1 = horizontal flip, 2 = vertical flip, 3 = both flipped
-	ID       int   `json:"t"` // The ID of the Tile.
+	ID       int   `json:"t"` // The ID of the Tile (starting from 0).
 }
 
 // FlipX returns if the Tile is flipped horizontally.
@@ -130,19 +141,21 @@ func (t *Tile) FlipY() bool {
 // Layer represents a Layer, which can be of multiple types (Entity, AutoTile, Tile, or IntGrid).
 type Layer struct {
 	// The width and height of the layer
-	Identifier  string `json:"__identifier"`     // Identifier (name) of the Layer
-	GridSize    int    `json:"__gridsize"`       // Grid size of the Layer
-	OffsetX     int    `json:"__pxTotalOffsetX"` // The offset of the layer
-	OffsetY     int    `json:"__pxTotalOffsetY"`
-	CellWidth   int    `json:"__cWid"`           // Overall width of the layer in cell count (i.e. a 160x80 level with 16x16 tiles would have a CellWidth and CellHeight of 10x5)
-	CellHeight  int    `json:"__cHei"`           // Overall height of the layer in cell count
-	Type        string `json:"__type"`           // Type of Layer. Can be compared using LayerType constants
-	TilesetPath string `json:"__tilesetRelPath"` // Relative path to the tileset image
-	IntGrid     []*Integer
-	AutoTiles   []*Tile   `json:"autoLayerTiles"` // Automatically set if IntGrid has values
-	Tiles       []*Tile   `json:"gridTiles"`
-	Entities    []*Entity `json:"entityInstances"`
-	Visible     bool      `json:"visible"` // Whether the layer is visible in LDtk
+	Identifier string   `json:"__identifier"`     // Identifier (name) of the Layer
+	GridSize   int      `json:"__gridsize"`       // Grid size of the Layer
+	OffsetX    int      `json:"__pxTotalOffsetX"` // The offset of the layer
+	OffsetY    int      `json:"__pxTotalOffsetY"`
+	CellWidth  int      `json:"__cWid"` // Overall width of the layer in cell count (i.e. a 160x80 level with 16x16 tiles would have a CellWidth and CellHeight of 10x5)
+	CellHeight int      `json:"__cHei"` // Overall height of the layer in cell count
+	Type       string   `json:"__type"` // Type of Layer. Can be compared using LayerType constants
+	Tileset    *Tileset `json:"-"`      // Reference to the Tileset used for this Layer (assuming the path is the same)
+	// TilesetPath string     `json:"__tilesetRelPath"` // Relative path to the tileset image; already is normalized using filepath.FromSlash().
+	TilesetUID int        `json:"__tilesetDefUid"` // The UID of the used tileset
+	IntGrid    []*Integer `json:"-"`
+	AutoTiles  []*Tile    `json:"autoLayerTiles"` // Automatically set if IntGrid has values
+	Tiles      []*Tile    `json:"gridTiles"`
+	Entities   []*Entity  `json:"entityInstances"`
+	Visible    bool       `json:"visible"` // Whether the layer is visible in LDtk
 }
 
 // AllTiles simply returns all of the tiles in the layer, regardless of whether they're AutoTiles or manually placed Tiles. This is a convenience function to keep you from rendering
@@ -175,13 +188,14 @@ func (layer *Layer) FromGridPosition(x, y int) (int, int) {
 	return x, y
 }
 
-// TileAt returns the Tile at the specified X and Y position (rounded down to the Layer's grid). Note that this doesn't take into account the Layer's local Offset values (so a tile at 16, 16 on a layer with an offset of 64, 64 would still be found at 16, 16).
+// TileAt returns the Tile at the specified grid (not world) X and Y position.
+// Note that this doesn't take into account the Layer's local Offset values (so a tile at 3, 4
+// on a layer with an offset of 64, 64 would still be found at 3, 4).
 func (layer *Layer) TileAt(x, y int) *Tile {
 
-	cx, cy := layer.ToGridPosition(x, y)
 	for _, tile := range layer.Tiles {
-		tx, ty := layer.ToGridPosition(x, y)
-		if tx == cx && ty == cy {
+		cx, cy := layer.ToGridPosition(tile.Position[0], tile.Position[1])
+		if cx == x && cy == y {
 			return tile
 		}
 	}
@@ -190,13 +204,14 @@ func (layer *Layer) TileAt(x, y int) *Tile {
 
 }
 
-// AutoTileAt returns the AutoLayer Tile at the specified X and Y position (rounded down to the Layer's grid). Note that this doesn't take into account the Layer's local Offset values (so a tile at 16, 16 on a layer with an offset of 64, 64 would still be found at 16, 16).
+// AutoTileAt returns the AutoLayer Tile at the specified grid (not world) X and Y position.
+// Note that this doesn't take into account the Layer's local Offset values (so a tile at 3, 4 on a layer
+// with an offset of 64, 64 would still be found at 3, 4).
 func (layer *Layer) AutoTileAt(x, y int) *Tile {
 
-	cx, cy := layer.ToGridPosition(x, y)
 	for _, autoTile := range layer.AutoTiles {
-		tx, ty := layer.ToGridPosition(x, y)
-		if tx == cx && ty == cy {
+		cx, cy := layer.ToGridPosition(autoTile.Position[0], autoTile.Position[1])
+		if cx == x && cy == y {
 			return autoTile
 		}
 	}
@@ -205,19 +220,49 @@ func (layer *Layer) AutoTileAt(x, y int) *Tile {
 
 }
 
-// IntegerAt returns the IntGrid Integer at the specified X and Y position (rounded down to the Layer's grid). Note that this doesn't take into account the Layer's local Offset values (so a tile at 16, 16 on a layer with an offset of 64, 64 would still be found at 16, 16).
+// IntegerAt returns the IntGrid Integer at the specified world X and Y position (rounded down to the Layer's grid).
+// Note that this doesn't take into account the Layer's local Offset values (so a tile at 3, 4 on a layer with an
+// offset of 64, 64 would still be found at 3, 4).
 func (layer *Layer) IntegerAt(x, y int) *Integer {
 
-	cx, cy := layer.ToGridPosition(x, y)
 	for _, integer := range layer.IntGrid {
-		tx, ty := layer.ToGridPosition(x, y)
-		if tx == cx && ty == cy {
+		cx, cy := layer.ToGridPosition(integer.Position[0], integer.Position[1])
+		if cx == x && cy == y {
 			return integer
 		}
 	}
 
 	return nil
 
+}
+
+type Tileset struct {
+	Path       string `json:"relPath"` // Relative path to the tileset image; already is normalized using filepath.FromSlash().
+	ID         int    `json:"uid"`
+	GridSize   int    `json:"tileGridSize"`
+	Spacing    int
+	Padding    int
+	Width      int `json:"pxWid"`
+	Height     int `json:"pxHei"`
+	Identifier string
+	CustomData map[int]string  `json:"-"` // Key: tileID, Value: custom data string
+	Enums      map[int]EnumSet `json:"-"` // Key: enumValueID, Value: tileIDs (tile indices)
+}
+
+// CustomDataForTile returns the custom data defined for the tile of the ID given in the tileset. If no custom data is defined, a blank string is returned.
+func (t *Tileset) CustomDataForTile(tileID int) string {
+	if data, exists := t.CustomData[tileID]; exists {
+		return data
+	}
+	return ""
+}
+
+// EnumsForTile returns the EnumSet defined for the tile of the ID given in the tileset. If no enums are defined, an empty EnumSet is returned.
+func (t *Tileset) EnumsForTile(tileID int) EnumSet {
+	if data, exists := t.Enums[tileID]; exists {
+		return data
+	}
+	return EnumSet{}
 }
 
 // BGImage represents a Level's background image as definied withing LDtk (the filepath, the scale, etc).
@@ -273,8 +318,9 @@ type Project struct {
 	BGColor         color.Color `json:"-"`
 	JSONVersion     string
 	Levels          []*Level
+	Tilesets        []*Tileset
+	IntGridNames    []string
 	// JSONData    string
-	IntGridNames []string
 }
 
 // LevelAt returns the level that "contains" the point indicated by the X and Y values given, or nil if one isn't found.
@@ -299,6 +345,15 @@ func (project *Project) LevelByIdentifier(identifier string) *Level {
 	for _, level := range project.Levels {
 		if level.Identifier == identifier {
 			return level
+		}
+	}
+	return nil
+}
+
+func (project *Project) TilesetByIdentifier(identifier string) *Tileset {
+	for _, tileset := range project.Tilesets {
+		if tileset.Identifier == identifier {
+			return tileset
 		}
 	}
 	return nil
@@ -343,6 +398,32 @@ func Read(data []byte) (*Project, error) {
 		project.BGColor = color.RGBA{}
 	}
 
+	for _, tilesetDef := range gjson.Get(dataStr, `defs.tilesets`).Array() {
+
+		newTS := &Tileset{CustomData: map[int]string{}, Enums: map[int]EnumSet{}}
+		json.Unmarshal([]byte(tilesetDef.Raw), newTS)
+		newTS.Path = filepath.FromSlash(newTS.Path)
+		project.Tilesets = append(project.Tilesets, newTS)
+
+		ts := project.TilesetByIdentifier(tilesetDef.Get("identifier").String())
+		for _, enumSet := range tilesetDef.Get("enumTags").Array() {
+			enumName := enumSet.Get("enumValueId").String()
+			enumTiles := enumSet.Get("tileIds").Array()
+			for _, idNumber := range enumTiles {
+				id := int(idNumber.Int())
+				if _, exists := ts.Enums[id]; !exists {
+					ts.Enums[id] = EnumSet{}
+				}
+				ts.Enums[id] = append(ts.Enums[id], enumName)
+			}
+		}
+
+		for _, customData := range tilesetDef.Get("customData").Array() {
+			newTS.CustomData[int(customData.Get("tileId").Int())] = customData.Get("data").String()
+		}
+
+	}
+
 	for index, level := range project.Levels {
 
 		if level.BGColorString != "" {
@@ -374,16 +455,32 @@ func Read(data []byte) (*Project, error) {
 
 		}
 
-		for _, layer := range level.Layers {
+		for layerIndex, layer := range level.Layers {
 
-			layer.TilesetPath = filepath.FromSlash(layer.TilesetPath)
+			for i, integer := range levelData.Get("layerInstances." + strconv.Itoa(layerIndex) + ".intGridCsv").Array() {
 
-			for _, integer := range layer.IntGrid {
+				if integer.Int() != 0 {
 
-				y := int(math.Floor(float64(integer.ID / layer.CellWidth)))
-				x := integer.ID - y*layer.CellWidth
-				integer.Position = []int{x * layer.GridSize, y * layer.GridSize}
+					newI := &Integer{
+						Value: int(integer.Int()),
+						ID:    i,
+					}
 
+					y := int(float64(newI.ID) / float64(layer.CellWidth))
+					x := newI.ID - y*layer.CellWidth
+					newI.Position = []int{x * layer.GridSize, y * layer.GridSize}
+
+					layer.IntGrid = append(layer.IntGrid, newI)
+
+				}
+
+			}
+
+			for _, tileset := range project.Tilesets {
+				if tileset.ID == layer.TilesetUID {
+					layer.Tileset = tileset
+					break
+				}
 			}
 
 		}

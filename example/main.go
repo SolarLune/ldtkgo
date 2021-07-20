@@ -61,7 +61,7 @@ func (g *Game) RenderLevel() {
 
 	level := g.LDTKProject.Levels[g.CurrentLevel]
 
-	if level.BGImage.Path != "" {
+	if level.BGImage != nil {
 		g.BGImage, _, _ = ebitenutil.NewImageFromFile(level.BGImage.Path)
 	} else {
 		g.BGImage = nil

@@ -75,15 +75,13 @@ func (er *EbitenRenderer) Clear() {
 // beginLayer gets called when necessary between rendering indidvidual Layers of a Level.
 func (er *EbitenRenderer) beginLayer(layer *ldtkgo.Layer, w, h int) {
 
-	tilesetPath := layer.TilesetPath
-
-	_, exists := er.Tilesets[tilesetPath]
+	_, exists := er.Tilesets[layer.Tileset.Path]
 
 	if !exists {
-		er.Tilesets[tilesetPath] = er.Loader.LoadTileset(tilesetPath)
+		er.Tilesets[layer.Tileset.Path] = er.Loader.LoadTileset(layer.Tileset.Path)
 	}
 
-	er.CurrentTileset = tilesetPath
+	er.CurrentTileset = layer.Tileset.Path
 
 	renderedImage := ebiten.NewImage(w, h)
 
