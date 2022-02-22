@@ -8,6 +8,7 @@ import (
 	"errors"
 	"image"
 	"image/color"
+	"io"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
@@ -359,22 +360,31 @@ func (project *Project) TilesetByIdentifier(identifier string) *Tileset {
 	return nil
 }
 
+type FileReader interface {
+	io.ReadSeeker
+	io.Closer
+}
+
 // Open loads the LDtk project from the filepath specified. Returns the Project and an error should the loading process fail (unable to find the file, unable to deserialize the JSON).
 func Open(filepath string) (*Project, error) {
 
 	var project *Project
 
-	var bytes []byte
+	var fileReader FileReader
 	var err error
 
-	bytes, err = ioutil.ReadFile(filepath)
+	fileReader, err = OpenFile(filepath)
+
+	var bytes []byte
+	if err == nil {
+		bytes, err = ioutil.ReadAll(fileReader)
+	}
 
 	if err == nil {
 		project, err = Read(bytes)
 	}
 
 	return project, err
-
 }
 
 // Read reads the LDtk project using the specified slice of bytes. Returns the Project and an error should there be an error in the loading process (unable to properly deserialize the JSON).
