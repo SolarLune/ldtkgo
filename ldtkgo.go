@@ -82,6 +82,7 @@ func (p *Property) AsColor() color.Color {
 // An Entity represents an Entity as placed in the LDtk level.
 type Entity struct {
 	Identifier string      `json:"__identifier"`   // Name of the Entity
+	IID        string      `json:"iid"`            // IID of the Entity
 	Position   []int       `json:"px"`             // Position of the Entity (x, y)
 	Width      int         `json:"width"`          // Width  of the Entity in pixels
 	Height     int         `json:"height"`         // Height of the Entity in pixels
@@ -142,6 +143,7 @@ func (t *Tile) FlipY() bool {
 type Layer struct {
 	// The width and height of the layer
 	Identifier string   `json:"__identifier"`     // Identifier (name) of the Layer
+	IID        string   `json:"iid"`              // IID of the layer
 	GridSize   int      `json:"__gridsize"`       // Grid size of the Layer
 	OffsetX    int      `json:"__pxTotalOffsetX"` // The offset of the layer
 	OffsetY    int      `json:"__pxTotalOffsetY"`
@@ -281,6 +283,7 @@ type Level struct {
 	Width         int         `json:"pxWid"` // Width and height of the level in pixels.
 	Height        int         `json:"pxHei"`
 	Identifier    string      // Name of the Level (i.e. "Level0")
+	IID           string      `json:"iid"` // IID of the level
 	BGColorString string      `json:"__bgColor"`
 	BGColor       color.Color `json:"-"`              // Background Color for the Level; will automatically default to the Project's if it is left at default in the LDtk project.
 	Layers        []*Layer    `json:"layerInstances"` // The layers in the level in the project. Note that layers here (first is "furthest" / at the bottom, last is on top) is reversed compared to LDtk (first is at the top, bottom is on the bottom).
@@ -291,6 +294,16 @@ type Level struct {
 func (level *Level) LayerByIdentifier(identifier string) *Layer {
 	for _, layer := range level.Layers {
 		if layer.Identifier == identifier {
+			return layer
+		}
+	}
+	return nil
+}
+
+// LayerByIdentifier returns a Layer by its unique identifier. Returns nil if the specified Layer isn't found.
+func (level *Level) LayerByIID(iid string) *Layer {
+	for _, layer := range level.Layers {
+		if layer.IID == iid {
 			return layer
 		}
 	}
@@ -350,10 +363,34 @@ func (project *Project) LevelByIdentifier(identifier string) *Level {
 	return nil
 }
 
+// LevelByIID returns the level that has the unique identifier specified, or nil if one isn't found.
+func (project *Project) LevelByIID(iid string) *Level {
+	for _, level := range project.Levels {
+		if level.IID == iid {
+			return level
+		}
+	}
+	return nil
+}
+
 func (project *Project) TilesetByIdentifier(identifier string) *Tileset {
 	for _, tileset := range project.Tilesets {
 		if tileset.Identifier == identifier {
 			return tileset
+		}
+	}
+	return nil
+}
+
+// EntityByUUID returns the Entity by unique identifier specified, or nil if entity isn't found
+func (project *Project) EntityByIID(iid string) *Entity {
+	for _, level := range project.Levels {
+		for _, layer := range level.Layers {
+			for _, entity := range layer.Entities {
+				if entity.IID == iid {
+					return entity
+				}
+			}
 		}
 	}
 	return nil
