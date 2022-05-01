@@ -275,16 +275,16 @@ type BGImage struct {
 
 // Level represents a Level in an LDtk Project.
 type Level struct {
-	BGImage       *BGImage `json:"-"` // Any background image that might be applied to this Level.
-	WorldX        int      // Position of the Level in the LDtk Project / world
+	Identifier    string // Name of the Level (i.e. "Level0")
+	WorldX        int    // Position of the Level in the LDtk Project / world
 	WorldY        int
-	Width         int         `json:"pxWid"` // Width and height of the level in pixels.
-	Height        int         `json:"pxHei"`
-	Identifier    string      // Name of the Level (i.e. "Level0")
+	Width         int         `json:"pxWid"` // Width of the level in pixels.
+	Height        int         `json:"pxHei"` // Height of the level in pixels.
 	BGColorString string      `json:"__bgColor"`
 	BGColor       color.Color `json:"-"`              // Background Color for the Level; will automatically default to the Project's if it is left at default in the LDtk project.
 	Layers        []*Layer    `json:"layerInstances"` // The layers in the level in the project. Note that layers here (first is "furthest" / at the bottom, last is on top) is reversed compared to LDtk (first is at the top, bottom is on the bottom).
 	Properties    []*Property `json:"fieldInstances"` // The Properties defined on the Entity
+	BGImage       *BGImage    `json:"-"`              // Any background image that might be applied to this Level.
 }
 
 // LayerByIdentifier returns a Layer by its identifier (name). Returns nil if the specified Layer isn't found.
@@ -323,7 +323,8 @@ type Project struct {
 	// JSONData    string
 }
 
-// LevelAt returns the level that "contains" the point indicated by the X and Y values given, or nil if one isn't found.
+// LevelAt returns the level that "contains" the point indicated by the X and Y values given, or nil if one isn't found. Note that this includes the World X and Y
+// as given in LDTK at the bottom, in the status bar.
 func (project *Project) LevelAt(x, y int) *Level {
 
 	for _, level := range project.Levels {

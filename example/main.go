@@ -8,12 +8,11 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/solarlune/ldtkgo"
-	renderer "github.com/solarlune/ldtkgo/ebitenrenderer"
 )
 
 type Game struct {
 	LDTKProject    *ldtkgo.Project
-	EbitenRenderer *renderer.EbitenRenderer
+	EbitenRenderer *EbitenRenderer
 	BGImage        *ebiten.Image
 	CurrentLevel   int
 	ActiveLayers   []bool
@@ -36,9 +35,9 @@ func NewGame() *Game {
 
 	// Seconds, we create a new Renderer.
 
-	// ebitenrenderer.DiskLoader loads images from disk using ebitenutil.NewImageFromFile() and takes an argument of the base path to use when loading.
+	// EbitenRenderer.DiskLoader loads images from disk using ebitenutil.NewImageFromFile() and takes an argument of the base path to use when loading.
 	// We pass a blank string to NewDiskLoader() because for the example, the assets are in the same directory.
-	g.EbitenRenderer = renderer.NewEbitenRenderer(renderer.NewDiskLoader(""))
+	g.EbitenRenderer = NewEbitenRenderer(NewDiskLoader(""))
 
 	// Then, we render the tiles out to *ebiten.Images contained in the EbitenRenderer. We'll grab them to draw later in the Draw() loop.
 	g.RenderLevel()

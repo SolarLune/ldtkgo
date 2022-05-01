@@ -1,4 +1,4 @@
-package ebitenrenderer
+package main
 
 import (
 	"image"
