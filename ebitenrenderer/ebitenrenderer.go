@@ -1,6 +1,7 @@
 package ebitenrenderer
 
 import (
+	"embed"
 	"image"
 	"path/filepath"
 	"sort"
@@ -34,6 +35,35 @@ func NewDiskLoader(basePath string) *DiskLoader {
 // LoadTileset simply loads a Tileset image from disk using ebitenutil's NewImageFromFile() function.
 func (d *DiskLoader) LoadTileset(tilesetPath string) *ebiten.Image {
 	if img, _, err := ebitenutil.NewImageFromFile(filepath.Join(d.BasePath, tilesetPath)); err == nil {
+		return img
+	}
+	return nil
+}
+
+// EmbedFSLoader is an implementation of TilesetLoader that loads a Tileset image from embed.FS using ebitenutil's NewImageFromReader() function.
+type EmbedFSLoader struct {
+	BasePath string
+	EmbedFS  embed.FS
+	Filter   ebiten.Filter
+}
+
+// NewEmbedFSLoader creates a new NewEmbedFSLoader struct.
+func NewEmbedFSLoader(basePath string, embedFS embed.FS) *EmbedFSLoader {
+	return &EmbedFSLoader{
+		BasePath: basePath,
+		EmbedFS:  embedFS,
+		Filter:   ebiten.FilterNearest,
+	}
+}
+
+// LoadTileset loads a Tileset image from disk using ebitenutil's NewImageFromReader() function.
+func (e *EmbedFSLoader) LoadTileset(tilesetPath string) *ebiten.Image {
+	fileReader, err := e.EmbedFS.Open(filepath.Join(e.BasePath, tilesetPath))
+	if err != nil {
+		return nil
+	}
+
+	if img, _, err := ebitenutil.NewImageFromReader(fileReader); err == nil {
 		return img
 	}
 	return nil
@@ -74,7 +104,6 @@ func (er *EbitenRenderer) Clear() {
 
 // beginLayer gets called when necessary between rendering indidvidual Layers of a Level.
 func (er *EbitenRenderer) beginLayer(layer *ldtkgo.Layer, w, h int) {
-
 	_, exists := er.Tilesets[layer.Tileset.Path]
 
 	if !exists {

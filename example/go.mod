@@ -3,7 +3,7 @@ module github.com/solarlune/ldtk/example
 go 1.17
 
 require (
-	github.com/hajimehoshi/ebiten/v2 v2.2.3
+	github.com/hajimehoshi/ebiten/v2 v2.2.5
 	github.com/solarlune/ldtkgo v0.9.3
 	github.com/solarlune/ldtkgo/ebitenrenderer v0.0.0-20210720161326-0d4b724849b1
 )
