@@ -1,22 +1,23 @@
-module github.com/solarlune/ldtk/example
+module github.com/solarlune/ldtkgo-example
 
 go 1.17
 
 require (
-	github.com/hajimehoshi/ebiten/v2 v2.2.3
+	github.com/hajimehoshi/ebiten/v2 v2.3.4
 	github.com/solarlune/ldtkgo v0.9.3
-	github.com/solarlune/ldtkgo/ebitenrenderer v0.0.0-20210720161326-0d4b724849b1
 )
 
 require (
-	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20210727001814-0db043d8d5be // indirect
-	github.com/jezek/xgb v0.0.0-20210312150743-0e0f116e1240 // indirect
-	github.com/tidwall/gjson v1.6.4 // indirect
-	github.com/tidwall/match v1.0.1 // indirect
-	github.com/tidwall/pretty v1.0.2 // indirect
-	golang.org/x/exp v0.0.0-20190731235908-ec7cb31e5a56 // indirect
-	golang.org/x/image v0.0.0-20210628002857-a66eb6448b8d // indirect
-	golang.org/x/mobile v0.0.0-20210902104108-5d9a33257ab5 // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20210917161153-d61c044b1678 // indirect
+	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20220516021902-eb3e265c7661 // indirect
+	github.com/gofrs/flock v0.8.1 // indirect
+	github.com/jezek/xgb v1.0.1 // indirect
+	github.com/tidwall/gjson v1.14.1 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
+	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d // indirect
+	golang.org/x/exp/shiny v0.0.0-20220613132600-b0d781184e0d // indirect
+	golang.org/x/image v0.0.0-20220601225756-64ec528b34cd // indirect
+	golang.org/x/mobile v0.0.0-20220518205345-8578da9835fd // indirect
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
+	golang.org/x/sys v0.0.0-20220614162138-6c1b26c55098 // indirect
 )
