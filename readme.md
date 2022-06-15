@@ -4,7 +4,7 @@ LDtk-Go is a loader for [LDtk v0.9.3](https://ldtk.io/) projects written in pure
 
 ![Screenshot](https://i.imgur.com/fFDmCCw.png)
 
-Generally, you first load a project using `ldtkgo.Open()` or `ldtkgo.Read()`; afterward, you render the layers out to images, and then draw them onscreen with a rendering or game development framework, like [ebiten](https://hajimehoshi.github.io/ebiten/), [Pixel](https://github.com/faiface/pixel), [raylib-go](https://github.com/gen2brain/raylib-go), or [raylib-go-plus](https://github.com/Lachee/raylib-goplus). An example for both Ebiten and Raylib are included.
+Generally, you first load a project using `ldtkgo.Open()` or `ldtkgo.Read()`; afterward, you render the layers out to images, and then draw them onscreen with a rendering or game development framework, like [ebiten](https://hajimehoshi.github.io/ebiten/), [Pixel](https://github.com/faiface/pixel), [raylib-go](https://github.com/gen2brain/raylib-go), or [raylib-go-plus](https://github.com/Lachee/raylib-goplus). An example that uses ebiten for rendering is included.
 
 All of the major elements of LDtk should be supported, including Levels, Layers, Tiles, AutoLayers, IntGrids, Entities, and Properties.
 

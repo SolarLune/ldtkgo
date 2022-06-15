@@ -1,5 +1,12 @@
 package main
 
+// ebitenRenderer is an example rendering system that uses ebiten to render LDTK levels to multiple *ebiten.Images, one for each layer.
+// Note that the approach I've taken here works fine, but would only really be usable for levels with smaller layers that wouldn't
+// require *ebiten.Image sizes that exceed the GPU's maximum image size. If this were the case (i.e. if a level was upwards of
+// 4096x4096 or 8192x8192 large), then I would instead render the tiles as necessary according to the camera's view. This would be
+// most likely slower than simply rendering a rectangular piece of each layer using the camera's coordinates, but it would at least be
+// usable to allow larger layers.
+
 import (
 	"image"
 	"path/filepath"
