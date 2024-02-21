@@ -6,16 +6,18 @@ package ldtkgo
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 
 	"github.com/tidwall/gjson"
 )
 
-//LayerType constants indicating a Layer's type.
+// LayerType constants indicating a Layer's type.
 const (
 	LayerTypeIntGrid  = "IntGrid"
 	LayerTypeAutoTile = "AutoLayer"
@@ -23,7 +25,7 @@ const (
 	LayerTypeEntity   = "Entities"
 )
 
-//WorldLayout constants indicating direction or layout system for Worlds.
+// WorldLayout constants indicating direction or layout system for Worlds.
 const (
 	WorldLayoutHorizontal = "LinearHorizontal"
 	WorldLayoutVertical   = "LinearVertical"
@@ -277,17 +279,18 @@ type BGImage struct {
 
 // Level represents a Level in an LDtk Project.
 type Level struct {
-	Identifier    string // Name of the Level (i.e. "Level0")
-	WorldX        int    // Position of the Level in the LDtk Project / world
-	WorldY        int
-	Width         int         `json:"pxWid"` // Width and height of the level in pixels.
-	Height        int         `json:"pxHei"`
-	IID           string      `json:"iid"` // IID of the level
-	BGColorString string      `json:"__bgColor"`
-	BGColor       color.Color `json:"-"`              // Background Color for the Level; will automatically default to the Project's if it is left at default in the LDtk project.
-	Layers        []*Layer    `json:"layerInstances"` // The layers in the level in the project. Note that layers here (first is "furthest" / at the bottom, last is on top) is reversed compared to LDtk (first is at the top, bottom is on the bottom).
-	Properties    []*Property `json:"fieldInstances"` // The Properties defined on the Entity
-	BGImage       *BGImage    `json:"-"`              // Any background image that might be applied to this Level.
+	Identifier      string // Name of the Level (i.e. "Level0")
+	WorldX          int    // Position of the Level in the LDtk Project / world
+	WorldY          int
+	Width           int         `json:"pxWid"` // Width and height of the level in pixels.
+	Height          int         `json:"pxHei"`
+	IID             string      `json:"iid"` // IID of the level
+	BGColorString   string      `json:"__bgColor"`
+	ExternalRelPath string      `json:"externalRelPath"`
+	BGColor         color.Color `json:"-"`              // Background Color for the Level; will automatically default to the Project's if it is left at default in the LDtk project.
+	Layers          []*Layer    `json:"layerInstances"` // The layers in the level in the project. Note that layers here (first is "furthest" / at the bottom, last is on top) is reversed compared to LDtk (first is at the top, bottom is on the bottom).
+	Properties      []*Property `json:"fieldInstances"` // The Properties defined on the Entity
+	BGImage         *BGImage    `json:"-"`              // Any background image that might be applied to this Level.
 }
 
 // LayerByIdentifier returns a Layer by its identifier (name). Returns nil if the specified Layer isn't found.
@@ -333,6 +336,7 @@ type Project struct {
 	Levels          []*Level
 	Tilesets        []*Tileset
 	IntGridNames    []string
+	ExternalLevels  bool `json:"externalLevels"`
 	// JSONData    string
 }
 
@@ -397,18 +401,18 @@ func (project *Project) EntityByIID(iid string) *Entity {
 	return nil
 }
 
-// Open loads the LDtk project from the filepath specified. Returns the Project and an error should the loading process fail (unable to find the file, unable to deserialize the JSON).
-func Open(filepath string) (*Project, error) {
+// Open loads the LDtk project from the filename specified. Returns the Project and an error should the loading process fail (unable to find the file, unable to deserialize the JSON).
+func Open(filename string) (*Project, error) {
 
 	var project *Project
 
 	var bytes []byte
 	var err error
 
-	bytes, err = ioutil.ReadFile(filepath)
+	bytes, err = ioutil.ReadFile(filename)
 
 	if err == nil {
-		project, err = Read(bytes)
+		project, err = read(bytes, filepath.Dir(filename))
 	}
 
 	return project, err
@@ -416,9 +420,20 @@ func Open(filepath string) (*Project, error) {
 }
 
 // Read reads the LDtk project using the specified slice of bytes. Returns the Project and an error should there be an error in the loading process (unable to properly deserialize the JSON).
+//
+// It will not work with projects with externally stored levels.
+// For those, use Open function.
 func Read(data []byte) (*Project, error) {
+	return read(data, "")
+}
+
+func read(data []byte, dir string) (*Project, error) {
 
 	project := &Project{IntGridNames: []string{}}
+
+	if project.ExternalLevels && dir == "" {
+		return nil, errors.New("use Open() to read a project with external levels")
+	}
 
 	err := json.Unmarshal(data, project)
 
@@ -463,6 +478,14 @@ func Read(data []byte) (*Project, error) {
 	}
 
 	for index, level := range project.Levels {
+		if project.ExternalLevels {
+			l, err := readLevel(filepath.Join(dir, level.ExternalRelPath))
+			if err != nil {
+				return nil, fmt.Errorf("loading external level: %w", err)
+			}
+			level = l
+			project.Levels[index] = l
+		}
 
 		if level.BGColorString != "" {
 			level.BGColor, _ = parseHexColorFast(level.BGColorString)
@@ -535,6 +558,16 @@ func Read(data []byte) (*Project, error) {
 
 	return project, err
 
+}
+
+func readLevel(filename string) (*Level, error) {
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	l := &Level{}
+	err = json.Unmarshal(data, l)
+	return l, err
 }
 
 // IntGridConstantByName returns the IntGrid constant index by a named string. If the string is not found,
