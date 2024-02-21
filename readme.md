@@ -22,14 +22,13 @@ ldtkProject *ldtkgo.Project
 ebitenRenderer *renderer.EbitenRenderer
 
 func main() {
-
 	// Load the LDtk Project
-    ldtkProject, err := ldtkgo.LoadFile("example.ldtk")
+	ldtkProject, err := ldtkgo.Open("example.ldtk")
 
-    if err != nil {
-        panic(err)
-    }
-    
+	if err != nil {
+		panic(err)
+	}
+
 	// Choose a level...
 	level := ldtkProject.Levels[0]
 
@@ -38,7 +37,6 @@ func main() {
 
 	// ... And render the tiles for the level out to layers, which will be *ebiten.Images. We'll retrieve them to draw in a Draw() loop later.
 	ebitenRenderer.Render(level)
-
 }
 
 ```
