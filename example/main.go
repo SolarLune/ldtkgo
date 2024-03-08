@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"image"
 	"log"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -24,10 +26,14 @@ func NewGame() *Game {
 		ActiveLayers: []bool{true, true, true, true},
 	}
 
-	var err error
-
 	// First, we load the LDtk Project. An error would indicate that ldtk-go was unable to find the project file or deserialize the JSON.
-	g.LDTKProject, err = ldtkgo.Open("example.ldtk")
+	dir, err := os.Getwd()
+
+	if err != nil {
+		panic(err)
+	}
+
+	g.LDTKProject, err = ldtkgo.Open("example.ldtk", os.DirFS(dir))
 
 	if err != nil {
 		panic(err)
@@ -100,11 +106,13 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 
-	screen.Fill(g.LDTKProject.Levels[g.CurrentLevel].BGColor) // We want to use the BG Color when possible
+	level := g.LDTKProject.Levels[g.CurrentLevel]
+
+	screen.Fill(level.BGColor) // We want to use the BG Color when possible
 
 	if g.BGImage != nil {
 		opt := &ebiten.DrawImageOptions{}
-		bgImage := g.LDTKProject.Levels[g.CurrentLevel].BGImage
+		bgImage := level.BGImage
 		opt.GeoM.Translate(-bgImage.CropRect[0], -bgImage.CropRect[1])
 		opt.GeoM.Scale(bgImage.ScaleX, bgImage.ScaleY)
 		screen.DrawImage(g.BGImage, opt)
@@ -114,6 +122,29 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		if g.ActiveLayers[i] {
 			screen.DrawImage(layer.Image, &ebiten.DrawImageOptions{})
 		}
+	}
+
+	// We'll additionally render the entities onscreen.
+	for _, layer := range level.Layers {
+		// In truth, we don't have to check to see if it's an entity layer before looping through,
+		// because only Entity layers have entities in the Entities slice.
+		for _, entity := range layer.Entities {
+
+			if entity.TileRect != nil {
+
+				tileset := g.EbitenRenderer.Tilesets[entity.TileRect.Tileset.Path]
+				tileRect := entity.TileRect
+				tile := tileset.SubImage(image.Rect(tileRect.X, tileRect.Y, tileRect.X+tileRect.W, tileRect.Y+tileRect.H)).(*ebiten.Image)
+
+				opt := &ebiten.DrawImageOptions{}
+				opt.GeoM.Translate(float64(entity.Position[0]), float64(entity.Position[1]))
+
+				screen.DrawImage(tile, opt)
+
+			}
+
+		}
+
 	}
 
 }

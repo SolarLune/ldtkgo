@@ -8,14 +8,15 @@ import (
 	"errors"
 	"image"
 	"image/color"
-	"io/ioutil"
+	"io"
+	"io/fs"
 	"path/filepath"
 	"strconv"
 
 	"github.com/tidwall/gjson"
 )
 
-//LayerType constants indicating a Layer's type.
+// LayerType constants indicating a Layer's type.
 const (
 	LayerTypeIntGrid  = "IntGrid"
 	LayerTypeAutoTile = "AutoLayer"
@@ -23,7 +24,7 @@ const (
 	LayerTypeEntity   = "Entities"
 )
 
-//WorldLayout constants indicating direction or layout system for Worlds.
+// WorldLayout constants indicating direction or layout system for Worlds.
 const (
 	WorldLayoutHorizontal = "LinearHorizontal"
 	WorldLayoutVertical   = "LinearVertical"
@@ -79,6 +80,16 @@ func (p *Property) AsColor() color.Color {
 	return color
 }
 
+// TileRect represents the rectangle from which an Entity tile is
+type TileRect struct {
+	X          int `json:"x`
+	Y          int `json:"y`
+	W          int `json:"w`
+	H          int `json:"h`
+	TilesetUID int `json:"tilesetUid"`
+	Tileset    *Tileset
+}
+
 // An Entity represents an Entity as placed in the LDtk level.
 type Entity struct {
 	Identifier string      `json:"__identifier"`   // Name of the Entity
@@ -88,6 +99,7 @@ type Entity struct {
 	Height     int         `json:"height"`         // Height of the Entity in pixels
 	Properties []*Property `json:"fieldInstances"` // The Properties defined on the Entity
 	Pivot      []float32   `json:"__pivot"`        // Pivot position of the Entity (a centered Pivot would be 0.5, 0.5)
+	TileRect   *TileRect   `json:"__tile"`
 }
 
 // PropertyByIdentifier returns a Property by its Identifier string (name).
@@ -104,7 +116,7 @@ func (entity *Entity) PropertyByIdentifier(id string) *Property {
 
 // Integer indicates the value for an individual "Integer Object" on the IntGrid layer.
 type Integer struct {
-	Position []int `json:"-"`       // Not actually available from the LDtk file, but added in afterwards as a convenience
+	Position []int `json:"-"`       // Not actually available from the LDtk file, but added in afterwards as a convenience; the position of the Integer in pixels.
 	Value    int   `json:"v"`       // The value of the Integer.
 	ID       int   `json:"coordID"` // The ID of the Integer on the IntGrid.
 }
@@ -158,6 +170,7 @@ type Layer struct {
 	Tiles      []*Tile    `json:"gridTiles"`
 	Entities   []*Entity  `json:"entityInstances"`
 	Visible    bool       `json:"visible"` // Whether the layer is visible in LDtk
+	Level      *Level     `json:"-`
 }
 
 // AllTiles simply returns all of the tiles in the layer, regardless of whether they're AutoTiles or manually placed Tiles. This is a convenience function to keep you from rendering
@@ -397,19 +410,23 @@ func (project *Project) EntityByIID(iid string) *Entity {
 	return nil
 }
 
-// Open loads the LDtk project from the filepath specified. Returns the Project and an error should the loading process fail (unable to find the file, unable to deserialize the JSON).
-func Open(filepath string) (*Project, error) {
+// Open loads the LDtk project from the filepath specified using the file system provided.
+// Open returns the Project and an error should the loading process fail (unable to find the file, unable to deserialize the JSON, etc).
+func Open(filepath string, fileSystem fs.FS) (*Project, error) {
 
-	var project *Project
+	file, err := fileSystem.Open(filepath)
 
-	var bytes []byte
-	var err error
-
-	bytes, err = ioutil.ReadFile(filepath)
-
-	if err == nil {
-		project, err = Read(bytes)
+	if err != nil {
+		return nil, err
 	}
+
+	bytes, err := io.ReadAll(file)
+
+	if err != nil {
+		return nil, err
+	}
+
+	project, err := Read(bytes)
 
 	return project, err
 
@@ -436,6 +453,8 @@ func Read(data []byte) (*Project, error) {
 		project.BGColor = color.RGBA{}
 	}
 
+	tilesetByUID := map[int]*Tileset{}
+
 	for _, tilesetDef := range gjson.Get(dataStr, `defs.tilesets`).Array() {
 
 		newTS := &Tileset{CustomData: map[int]string{}, Enums: map[int]EnumSet{}}
@@ -459,6 +478,8 @@ func Read(data []byte) (*Project, error) {
 		for _, customData := range tilesetDef.Get("customData").Array() {
 			newTS.CustomData[int(customData.Get("tileId").Int())] = customData.Get("data").String()
 		}
+
+		tilesetByUID[newTS.ID] = newTS
 
 	}
 
@@ -514,12 +535,13 @@ func Read(data []byte) (*Project, error) {
 
 			}
 
-			for _, tileset := range project.Tilesets {
-				if tileset.ID == layer.TilesetUID {
-					layer.Tileset = tileset
-					break
+			for _, e := range layer.Entities {
+				if e.TileRect != nil {
+					e.TileRect.Tileset = tilesetByUID[e.TileRect.TilesetUID]
 				}
 			}
+
+			layer.Tileset = tilesetByUID[layer.TilesetUID]
 
 		}
 
