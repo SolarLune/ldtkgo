@@ -100,6 +100,10 @@ func (g *Game) Update() error {
 		g.ActiveLayers[3] = !g.ActiveLayers[3]
 	}
 
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		return ebiten.Termination
+	}
+
 	return nil
 
 }
@@ -155,7 +159,7 @@ func main() {
 
 	g := NewGame()
 
-	ebiten.SetWindowResizable(true)
+	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 
 	ebiten.SetWindowTitle("LDtk-Go Example")
 

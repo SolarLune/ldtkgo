@@ -99,6 +99,7 @@ type Entity struct {
 	Height     int         `json:"height"`         // Height of the Entity in pixels
 	Properties []*Property `json:"fieldInstances"` // The Properties defined on the Entity
 	Pivot      []float32   `json:"__pivot"`        // Pivot position of the Entity (a centered Pivot would be 0.5, 0.5)
+	Tags       []string    `json:"__tags"`         // Tags (categories) assigned to the Entity
 	TileRect   *TileRect   `json:"__tile"`
 }
 
