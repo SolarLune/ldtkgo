@@ -408,7 +408,7 @@ func (project *Project) TilesetByIdentifier(identifier string) *Tileset {
 	return nil
 }
 
-// EntityByUUID returns the Entity by unique identifier specified, or nil if entity isn't found
+// EntityByIID returns the Entity by unique identifier specified, or nil if entity isn't found
 func (project *Project) EntityByIID(iid string) *Entity {
 	for _, level := range project.Levels {
 		for _, layer := range level.Layers {
@@ -422,7 +422,7 @@ func (project *Project) EntityByIID(iid string) *Entity {
 	return nil
 }
 
-// EntityByUUID returns the Entity by unique identifier specified, or nil if entity isn't found
+// EntityDefinitionByIdentifier returns the EntityDefinition by unique identifier specified, or nil if entity isn't found
 func (project *Project) EntityDefinitionByIdentifier(identifier string) *EntityDefinition {
 	for _, definition := range project.EntityDefinitions {
 		if definition.Identifier == identifier {
