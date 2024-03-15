@@ -98,6 +98,8 @@ type EntityDefinition struct {
 	Height     int       `json:"height"`     // Height of the Entity in pixels
 	Tags       []string  `json:"tags"`       // Tags (categories) assigned to the Entity
 	TileRect   *TileRect `json:"tileRect"`
+	PivotX     float32   `json:"pivotX"`
+	PivotY     float32   `json:"pivotY"`
 }
 
 // An Entity represents an Entity as placed in the LDtk level.
