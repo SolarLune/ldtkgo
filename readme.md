@@ -12,36 +12,7 @@ All of the major elements of LDtk should be supported, including Levels, Layers,
 
 ## Loading Projects
 
-Using LDtk-Go is simple. 
-
-First, you load the LDTK project, either with `ldtkgo.Open()` or `ldtkgo.Read()`. After that, you have access to most of the useful parts of the entire LDTK project. Here's an excerpt from the provided example, showing loading an LDtk Project and then 
-
-```go
-
-ldtkProject *ldtkgo.Project
-ebitenRenderer *renderer.EbitenRenderer
-
-func main() {
-	// Load the LDtk Project
-	ldtkProject, err := ldtkgo.Open("example.ldtk")
-
-	if err != nil {
-		panic(err)
-	}
-
-	// Choose a level...
-	level := ldtkProject.Levels[0]
-
-	// Create a new renderer...
-	ebitenRenderer = renderer.NewEbitenRenderer()
-
-	// ... And render the tiles for the level out to layers, which will be *ebiten.Images. We'll retrieve them to draw in a Draw() loop later.
-	ebitenRenderer.Render(level)
-}
-
-```
-
-As shown above, rendering is done by creating a renderer and using it to render with your framework of choice. An example is already provided for the ebiten and raylib frameworks, which can be used as a general guide for creating other renderers.
+Using LDtk-Go is not that simple. You should heck out the example to use.
 
 ## Running the Example
 
