@@ -90,6 +90,18 @@ type TileRect struct {
 	Tileset    *Tileset
 }
 
+// An Entity represents an Entitydefintion as defined in the entities.
+type EntityDefinition struct {
+	Identifier string    `json:"identifier"` // Name of the Entity
+	UID        int       `json:"uid"`        // IID of the Entity
+	Width      int       `json:"width"`      // Width  of the Entity in pixels
+	Height     int       `json:"height"`     // Height of the Entity in pixels
+	Tags       []string  `json:"tags"`       // Tags (categories) assigned to the Entity
+	TileRect   *TileRect `json:"tileRect"`
+	PivotX     float32   `json:"pivotX"`
+	PivotY     float32   `json:"pivotY"`
+}
+
 // An Entity represents an Entity as placed in the LDtk level.
 type Entity struct {
 	Identifier string      `json:"__identifier"`   // Name of the Entity
@@ -339,15 +351,16 @@ func (level *Level) PropertyByIdentifier(id string) *Property {
 
 // Project represents a full LDtk Project, allowing you access to the Levels within as well as some project-level properties.
 type Project struct {
-	WorldLayout     string
-	WorldGridWidth  int
-	WorldGridHeight int
-	BGColorString   string      `json:"defaultLevelBgColor"`
-	BGColor         color.Color `json:"-"`
-	JSONVersion     string
-	Levels          []*Level
-	Tilesets        []*Tileset
-	IntGridNames    []string
+	WorldLayout       string
+	WorldGridWidth    int
+	WorldGridHeight   int
+	BGColorString     string      `json:"defaultLevelBgColor"`
+	BGColor           color.Color `json:"-"`
+	JSONVersion       string
+	Levels            []*Level
+	Tilesets          []*Tileset
+	IntGridNames      []string
+	EntityDefinitions []*EntityDefinition
 	// JSONData    string
 }
 
@@ -398,7 +411,7 @@ func (project *Project) TilesetByIdentifier(identifier string) *Tileset {
 	return nil
 }
 
-// EntityByUUID returns the Entity by unique identifier specified, or nil if entity isn't found
+// EntityByIID returns the Entity by unique identifier specified, or nil if entity isn't found
 func (project *Project) EntityByIID(iid string) *Entity {
 	for _, level := range project.Levels {
 		for _, layer := range level.Layers {
@@ -407,6 +420,16 @@ func (project *Project) EntityByIID(iid string) *Entity {
 					return entity
 				}
 			}
+		}
+	}
+	return nil
+}
+
+// EntityDefinitionByIdentifier returns the EntityDefinition by unique identifier specified, or nil if entity isn't found
+func (project *Project) EntityDefinitionByIdentifier(identifier string) *EntityDefinition {
+	for _, definition := range project.EntityDefinitions {
+		if definition.Identifier == identifier {
+			return definition
 		}
 	}
 	return nil
@@ -558,6 +581,21 @@ func Read(data []byte) (*Project, error) {
 			}
 		}
 	}
+
+	entityDefinitions := []*EntityDefinition{}
+	defsResult := gjson.Get(dataStr, `defs.entities`).Array()
+	for _, def := range defsResult {
+		b := []byte(def.Raw)
+		entityDefinition := &EntityDefinition{}
+		if err := json.Unmarshal(b, &entityDefinition); err != nil {
+			return nil, err
+		}
+		if entityDefinition.TileRect != nil {
+			entityDefinition.TileRect.Tileset = tilesetByUID[entityDefinition.TileRect.TilesetUID]
+		}
+		entityDefinitions = append(entityDefinitions, entityDefinition)
+	}
+	project.EntityDefinitions = entityDefinitions
 
 	return project, err
 
