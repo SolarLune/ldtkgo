@@ -4,8 +4,8 @@ import (
 	"embed"
 	"fmt"
 	"image"
+	"io/fs"
 	"log"
-	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -21,8 +21,8 @@ type Game struct {
 	ActiveLayers []bool
 }
 
-//go:embed *.png
-var tilesetImages embed.FS
+//go:embed assets
+var assets embed.FS
 
 func NewGame() *Game {
 
@@ -30,24 +30,33 @@ func NewGame() *Game {
 		ActiveLayers: []bool{true, true, true, true, true},
 	}
 
-	// First, we load the LDtk Project. An error would indicate that ldtk-go was unable to find the project file or deserialize the JSON.
-	dir, err := os.Getwd()
+	proj, err := ldtkgo.Open("assets/example.ldtk", assets)
 
 	if err != nil {
 		panic(err)
 	}
 
-	g.LDTKProject, err = ldtkgo.Open("example.ldtk", os.DirFS(dir))
-
-	if err != nil {
-		panic(err)
-	}
+	g.LDTKProject = proj
 
 	// Next, we create a new Renderer to render our level.
 
 	// We pass the filesystem to use for the tileset - in this case, these are embedded into the code as an fs.FS / embed.FS, but you could
 	// also use, say, os.DirFS() to create a filesystem from your HDD, as we did above.
-	g.Renderer, err = renderer.New(tilesetImages, g.LDTKProject)
+
+	// Here, we use fs.Sub to create a sub directory that is relative to the .ldtk file.
+	subDir, err := fs.Sub(assets, "assets")
+
+	if err != nil {
+		panic(err)
+	}
+
+	// The alternative would be to create another working fs.FS that is just fs.Sub(assets, "assets") - the root of it would
+	// then be where the .ldtk file is (as all resources used in the .ldtk file are, naturally, relative to that location).
+	// You could also use a custom function or something like debme to easily customize virtual file system roots to suit
+	// your needs.
+
+	// Here, we create the Renderer.
+	g.Renderer, err = renderer.New(subDir, g.LDTKProject)
 
 	if err != nil {
 		panic(err)
