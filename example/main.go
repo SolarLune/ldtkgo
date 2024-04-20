@@ -124,7 +124,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Now, something that we can do that's a bit cool is that we can render things in the LayerDrawCallback - if we render on a specific
 	// layer index or layer type, then we can render in-between the other layers, allowing us to place objects behind tiles or vice-versa
-	opt.LayerDrawCallback = func(layer *ldtkgo.Layer, index int) bool {
+	opt.LayerDrawCallback = func(layer *ldtkgo.Layer, layerIndex int) bool {
 
 		for _, entity := range layer.Entities {
 
@@ -144,7 +144,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 		}
 
-		return g.ActiveLayers[index]
+		return g.ActiveLayers[layerIndex]
 
 	}
 
