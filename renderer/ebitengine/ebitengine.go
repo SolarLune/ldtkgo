@@ -18,8 +18,8 @@ var ErrorBackgroundNotFound = "background image not found at given filepath"
 var ErrorTilesetNotFound = "tileset image not found at given filepath"
 var ErrorNoLevelGiven = "level pointer is nil"
 
-// Ebitengine is a struct that draws LDtk levels to an *ebiten.screen.
-type Ebitengine struct {
+// Renderer is a struct that draws LDtk levels to an *ebiten.screen.
+type Renderer struct {
 	Tilesets          map[string]*ebiten.Image
 	Backgrounds       map[string]*ebiten.Image
 	CurrentTileset    *ebiten.Image
@@ -29,9 +29,9 @@ type Ebitengine struct {
 
 // New creates a new Ebitengine renderer. This is used to render a level to one or more *ebiten.Images.
 // The file system passed is the file system to use to load tileset images for the Renderer to use.
-func New(fs fs.FS, project *ldtkgo.Project) (*Ebitengine, error) {
+func New(fs fs.FS, project *ldtkgo.Project) (*Renderer, error) {
 
-	renderer := &Ebitengine{
+	renderer := &Renderer{
 		Backgrounds: map[string]*ebiten.Image{},
 		Tilesets:    map[string]*ebiten.Image{},
 		FileSystem:  fs,
@@ -92,7 +92,7 @@ func NewDefaultDrawOptions() *DrawOptions {
 }
 
 // Render draws an *ldtkgo.Level to the destination screen specified using render options to control the process.
-func (e *Ebitengine) Render(level *ldtkgo.Level, screen *ebiten.Image, drawOptions *DrawOptions) error {
+func (e *Renderer) Render(level *ldtkgo.Level, screen *ebiten.Image, drawOptions *DrawOptions) error {
 
 	if level == nil {
 		return errors.New(ErrorNoLevelGiven)

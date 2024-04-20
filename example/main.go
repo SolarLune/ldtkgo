@@ -15,7 +15,7 @@ import (
 
 type Game struct {
 	LDTKProject  *ldtkgo.Project
-	Renderer     *renderer.Ebitengine
+	Renderer     *renderer.Renderer
 	BGImage      *ebiten.Image
 	CurrentLevel int
 	ActiveLayers []bool

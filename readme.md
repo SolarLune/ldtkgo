@@ -27,7 +27,7 @@ import (
 )
 
 var ldtkProject *ldtkgo.Project
-var ebitenRenderer *renderer.Ebitengine
+var ebitenRenderer *renderer.Renderer
 
 //go:embed *.ldtk *.png
 var fileSystem embed.FS
