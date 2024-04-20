@@ -302,6 +302,7 @@ type Level struct {
 	Layers        []*Layer    `json:"layerInstances"` // The layers in the level in the project. Note that layers here (first is "furthest" / at the bottom, last is on top) is reversed compared to LDtk (first is at the top, bottom is on the bottom).
 	Properties    []*Property `json:"fieldInstances"` // The Properties defined on the Entity
 	BGImage       *BGImage    `json:"-"`              // Any background image that might be applied to this Level.
+	Project       *Project    `json:"-"`
 }
 
 // LayerByIdentifier returns a Layer by its identifier (name). Returns nil if the specified Layer isn't found.
@@ -485,6 +486,8 @@ func Read(data []byte) (*Project, error) {
 	}
 
 	for index, level := range project.Levels {
+
+		level.Project = project
 
 		if level.BGColorString != "" {
 			level.BGColor, _ = parseHexColorFast(level.BGColorString)
