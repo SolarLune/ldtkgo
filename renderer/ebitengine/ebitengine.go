@@ -131,13 +131,12 @@ func (r *Renderer) Render(level *ldtkgo.Level, screen *ebiten.Image, drawOptions
 			r.CurrentTileset = r.Tilesets[layer.Tileset.Path]
 			// if tiles := layer.AllTiles(); len(tiles) > 0 {
 
-			for tileIndex, tileData := range layer.Tiles {
-				r.drawTile(tileData, tileIndex, layer, screen, drawOptions)
-			}
+			tileIndex := 0
 
-			for tileIndex, tileData := range layer.AutoTiles {
+			layer.ForEachTile(func(tileData *ldtkgo.Tile) {
 				r.drawTile(tileData, tileIndex, layer, screen, drawOptions)
-			}
+				tileIndex++
+			})
 
 		}
 
@@ -158,22 +157,28 @@ func (r *Renderer) drawTile(tileData *ldtkgo.Tile, tileIndex int, layer *ldtkgo.
 	// Subimage the Tile from the Tileset
 	tile := r.CurrentTileset.SubImage(image.Rect(tileData.Src[0], tileData.Src[1], tileData.Src[0]+layer.GridSize, tileData.Src[1]+layer.GridSize)).(*ebiten.Image)
 
-	opt := *drawOptions.LayerDrawOptions // Clone the draw options used to render the tiles, because we'll be transforming them
+	geoM := ebiten.GeoM{}
 
 	// We have to offset the tile to be centered before flipping
-	opt.GeoM.Translate(float64(-layer.GridSize/2), float64(-layer.GridSize/2))
+	geoM.Translate(float64(-layer.GridSize/2), float64(-layer.GridSize/2))
 
 	// Handle flipping; first bit in byte is horizontal flipping, second is vertical flipping.
 
 	if tileData.FlipX() {
-		opt.GeoM.Scale(-1, 1)
+		geoM.Scale(-1, 1)
 	}
 	if tileData.FlipY() {
-		opt.GeoM.Scale(1, -1)
+		geoM.Scale(1, -1)
 	}
 
 	// Undo offsetting
-	opt.GeoM.Translate(float64(layer.GridSize/2), float64(layer.GridSize/2))
+	geoM.Translate(float64(layer.GridSize/2), float64(layer.GridSize/2))
+
+	geoM.Concat(drawOptions.LayerDrawOptions.GeoM)
+
+	opt := *drawOptions.LayerDrawOptions // Clone the draw options used to render the tiles, because we'll be transforming them
+
+	opt.GeoM = geoM
 
 	// Move tile to final position; note that slightly unlike LDtk, layer offsets in LDtk-Go are added directly into the final tiles' X and Y positions. This means that with this renderer,
 	// if a layer's offset pushes tiles outside of the layer's render Result image, they will be cut off. On LDtk, the tiles are still rendered, of course.

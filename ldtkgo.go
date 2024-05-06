@@ -37,6 +37,7 @@ type Property struct {
 	Identifier string      `json:"__identifier"`
 	Type       string      `json:"__type"`  // The Type of the Property.
 	Value      interface{} `json:"__value"` // The value contained within the property.
+	project    *Project    `json:"-"`
 }
 
 // AsInt returns a property's value as an int. Note that this function doesn't check to ensure the value is the specified type before returning it.
@@ -68,6 +69,13 @@ func (p *Property) AsArray() []interface{} {
 // "cy", and the value is the x and y position. Note that this function doesn't check to ensure the value is the specified type before returning it.
 func (p *Property) AsMap() map[string]interface{} {
 	return p.Value.(map[string]interface{})
+}
+
+// AsEntityRef returns a proprety's value as an Entity reference.
+// Note that this function doesn't check to ensure the value is the specified type before returning it.
+func (p *Property) AsEntityRef() *Entity {
+	ref := p.AsMap()
+	return p.project.LevelByIID(ref["levelIid"].(string)).LayerByIID(ref["layerIid"].(string)).EntityByIID(ref["entityIid"].(string))
 }
 
 func (p *Property) IsNull() bool {
@@ -113,6 +121,18 @@ type Entity struct {
 	Pivot      []float32   `json:"__pivot"`        // Pivot position of the Entity (a centered Pivot would be 0.5, 0.5)
 	Tags       []string    `json:"__tags"`         // Tags (categories) assigned to the Entity
 	TileRect   *TileRect   `json:"__tile"`
+	Data       interface{} `json:"-"` // Data allows you to attach key custom data to the entity post-parsing
+	level      *Level      `json:"-"`
+}
+
+// WorldX returns the X position of the Entity in world space, adding in the positioning of the Level.
+func (entity *Entity) WorldX() int {
+	return entity.Position[0] + entity.level.WorldX
+}
+
+// WorldY returns the Y position of the Entity in world space, adding in the positioning of the Level.
+func (entity *Entity) WorldY() int {
+	return entity.Position[1] + entity.level.WorldY
 }
 
 // PropertyByIdentifier returns a Property by its Identifier string (name).
@@ -183,19 +203,34 @@ type Layer struct {
 	Tiles      []*Tile    `json:"gridTiles"`
 	Entities   []*Entity  `json:"entityInstances"`
 	Visible    bool       `json:"visible"` // Whether the layer is visible in LDtk
-	Level      *Level     `json:"-`
+	level      *Level     `json:"-"`
 }
 
-// AllTiles simply returns all of the tiles in the layer, regardless of whether they're AutoTiles or manually placed Tiles. This is a convenience function to keep you from rendering
-// AutoTiles and Tiles in two different loops.
-func (layer *Layer) AllTiles() []*Tile {
-	return append(append([]*Tile{}, layer.Tiles...), layer.AutoTiles...)
+// ForEachTile runs a callback for each tile in the Layer. This is to make it simpler to run a render loop regardless of if the Layer is composed of auto tiles or
+// manually placed tiles.
+func (layer *Layer) ForEachTile(function func(tile *Tile)) {
+	for _, tile := range layer.Tiles {
+		function(tile)
+	}
+	for _, tile := range layer.AutoTiles {
+		function(tile)
+	}
 }
 
 // EntityByIdentifier returns the Entity with the identifier (name) specified. If no Entity with the name is found, the function returns nil.
 func (layer *Layer) EntityByIdentifier(identifier string) *Entity {
 	for _, entity := range layer.Entities {
 		if entity.Identifier == identifier {
+			return entity
+		}
+	}
+	return nil
+}
+
+// EntityByIID returns the Entity with the IID specified. If no Entity with the name is found, the function returns nil.
+func (layer *Layer) EntityByIID(iid string) *Entity {
+	for _, entity := range layer.Entities {
+		if entity.IID == iid {
 			return entity
 		}
 	}
@@ -262,6 +297,16 @@ func (layer *Layer) IntegerAt(x, y int) *Integer {
 
 	return nil
 
+}
+
+// Index returns the index of the layer in the Level's layer stack.
+func (layer *Layer) Index() int {
+	for i, l := range layer.level.Layers {
+		if l == layer {
+			return i
+		}
+	}
+	return -1
 }
 
 type Tileset struct {
@@ -364,9 +409,9 @@ type Project struct {
 	// JSONData    string
 }
 
-// LevelAt returns the level that "contains" the point indicated by the X and Y values given, or nil if one isn't found. Note that this includes the World X and Y
-// as given in LDTK at the bottom, in the status bar.
-func (project *Project) LevelAt(x, y int) *Level {
+// LevelByPosition returns the level that "contains" the point indicated by the X and Y values given, or nil if one isn't found.
+// (Note that the world position is displayed in LDTK at the bottom in the status bar.)
+func (project *Project) LevelByPosition(x, y int) *Level {
 
 	for _, level := range project.Levels {
 
@@ -543,6 +588,8 @@ func Read(data []byte) (*Project, error) {
 
 		for layerIndex, layer := range level.Layers {
 
+			layer.level = level
+
 			for i, integer := range levelData.Get("layerInstances." + strconv.Itoa(layerIndex) + ".intGridCsv").Array() {
 
 				if integer.Int() != 0 {
@@ -565,6 +612,12 @@ func Read(data []byte) (*Project, error) {
 			for _, e := range layer.Entities {
 				if e.TileRect != nil {
 					e.TileRect.Tileset = tilesetByUID[e.TileRect.TilesetUID]
+				}
+
+				e.level = level
+
+				for _, prop := range e.Properties {
+					prop.project = project
 				}
 			}
 
